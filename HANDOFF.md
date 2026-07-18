@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early-stage Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. The project remains in pre-production. The repository contains a bounded geometric test map, keyboard-controlled boundary-clamped camera, and placeholder unit selection. Basic unit movement is not implemented.
+**Red Dust, Cold Iron** is the working title of an early-stage Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. The project remains in pre-production. Milestone 1 is implemented: the repository contains a bounded geometric test map, keyboard-controlled boundary-clamped camera, placeholder unit selection, and direct right-click unit movement.
 
 ## Confirmed
 
@@ -26,9 +26,11 @@
 - Four selectable geometric placeholder units with collision-based click hit testing.
 - Single-click and normalized drag-box selection with visible selected-state indicators.
 - Empty-ground clicks clear the current selection.
+- Right-click movement commands for selected units, with map-bound destination clamping and command replacement.
+- Direct frame-rate-independent movement at an exported default speed of 180 pixels per second, with a 4-pixel default arrival tolerance and clean destination snapping.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-The remaining Milestone 1 work is basic unit movement.
+Milestone 1 is technically complete, pending manual interaction verification in the Godot editor.
 
 ## Creative boundary
 

@@ -13,6 +13,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Proposed Milestone 1 implementation plan, including approval gates and verification criteria.
 - First Milestone 1 technical slice: a bounded 2048 × 2048 test map and keyboard-controlled, boundary-clamped camera.
 - Second Milestone 1 technical slice: four geometric placeholder units with click selection, drag-box selection, selection indicators, and empty-ground deselection.
+- Final Milestone 1 technical slice: right-click commands, map-clamped destinations, command replacement, and direct frame-rate-independent placeholder-unit movement.
 
 ### Changed
 

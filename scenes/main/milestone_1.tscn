@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/maps/test_map.tscn" id="1_test_map"]
 [ext_resource type="Script" path="res://scripts/camera/camera_controller.gd" id="2_camera"]
 [ext_resource type="PackedScene" path="res://scenes/units/test_unit.tscn" id="3_test_unit"]
 [ext_resource type="Script" path="res://scripts/selection/selection_controller.gd" id="4_selection"]
+[ext_resource type="Script" path="res://scripts/commands/move_command_controller.gd" id="5_move_command"]
 
 [node name="Milestone1" type="Node2D"]
 
@@ -37,3 +38,7 @@ selection_rectangle = NodePath("SelectionRectangle")
 visible = false
 mouse_filter = 2
 color = Color(0.2, 0.75, 1, 0.25)
+
+[node name="MoveCommandController" type="Node" parent="." node_paths=PackedStringArray("test_map")]
+script = ExtResource("5_move_command")
+test_map = NodePath("../TestMap")
