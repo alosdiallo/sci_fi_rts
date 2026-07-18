@@ -11,6 +11,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Staged roadmap beginning with the camera, test map, selection, and movement prototype.
 - Concise session handoff and repository-wide agent instructions.
 - Proposed Milestone 1 implementation plan, including approval gates and verification criteria.
+- First Milestone 1 technical slice: a bounded 2048 × 2048 test map and keyboard-controlled, boundary-clamped camera.
 
 ### Changed
 
@@ -18,3 +19,4 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Approved **Red Dust, Cold Iron** as the working title.
 - Confirmed that all version-one playable missions take place on Mars.
 - Confirmed the **Free Settlements of Mars** as the Martian faction and the central contrast of entrenched local mass production against a smaller, elite Earth–Lunar expeditionary force; the expeditionary faction's finalized name remains unresolved.
+- Set `scenes/main/milestone_1.tscn` as the main scene and added WASD and arrow-key camera input actions.

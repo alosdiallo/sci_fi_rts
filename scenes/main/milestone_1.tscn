@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/maps/test_map.tscn" id="1_test_map"]
+[ext_resource type="Script" path="res://scripts/camera/camera_controller.gd" id="2_camera"]
+
+[node name="Milestone1" type="Node2D"]
+
+[node name="TestMap" parent="." instance=ExtResource("1_test_map")]
+
+[node name="Camera2D" type="Camera2D" parent="." node_paths=PackedStringArray("test_map")]
+position = Vector2(1024, 1024)
+position_smoothing_enabled = false
+script = ExtResource("2_camera")
+test_map = NodePath("../TestMap")
