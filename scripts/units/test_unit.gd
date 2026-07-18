@@ -58,9 +58,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 
-func set_selected(is_selected: bool) -> void:
-	_is_selected = is_selected
-	selection_indicator.visible = is_selected
+func set_selected(selected: bool) -> void:
+	_is_selected = selected
+	selection_indicator.visible = selected
 
 
 func is_selected() -> bool:
