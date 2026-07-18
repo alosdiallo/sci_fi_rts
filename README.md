@@ -1,6 +1,6 @@
-# Science Fiction RTS
+# Red Dust, Cold Iron
 
-An early-stage Godot project for a classic 2D pixel-art science-fiction real-time strategy game. Its mechanical reference point is the approachable, deliberate style of late-1990s RTS games such as *Dune 2000*.
+An early-stage Godot project for a classic 2D pixel-art science-fiction real-time strategy game set during a war for control of Mars. Its working title is **Red Dust, Cold Iron**, and its mechanical reference point is the approachable, deliberate style of late-1990s RTS games such as *Dune 2000*.
 
 The repository is currently in pre-production. The documents define direction and scope; they do not indicate that gameplay systems have been implemented.
 
@@ -27,7 +27,7 @@ See [GAME_DESIGN.md](GAME_DESIGN.md) for the design boundaries, [ROADMAP.md](ROA
 
 ## Setting status
 
-The setting is still in development. Confirmed notes establish only a provisional conceptual direction: planetary invasion, a dying or lightless world, fortified settlements, powerful invading walkers, and a hostile neutral biosphere. Names, lore, faction identities, plot details, and the relationships among these ingredients remain unresolved and should not be invented without approval.
+All playable missions in the first version take place on Mars. The **Free Settlements of Mars** is the confirmed Martian faction, built around entrenched local industry and mass production. Its opposing Earth–Lunar expeditionary faction is a smaller, elite force, but its finalized political or military name remains unresolved. Further names, plot details, exact faction mechanics, and other material identified as provisional or unresolved in the design document should not be invented without approval.
 
 ## Running the project
 
