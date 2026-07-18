@@ -38,9 +38,10 @@
 - Combat Prototype Slice 1 adds authored maximum health, per-instance current health, damage reception, health bars shown only after damage, and one-shot unit death cleanup.
 - Combat Prototype Slice 2 assigns prototype-only integer teams and adds contextual hostile-target commands with selected-attacker target lines; it does not add attacks or damage dealing.
 - Combat Prototype Slice 3 adds validated damage, range, and cooldown data plus no-pursuit deterministic instant-hit attacks and brief temporary hit outlines.
+- Approach and Spacing Slice 1 lets explicitly commanded units directly approach stationary hostile targets and stop 8 pixels inside their authored range before attacking.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice and the first three combat prototype slices are implemented, pending manual interaction and inspector verification in the Godot editor.
+Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice, the first three combat prototype slices, and the first approach slice are implemented, pending manual interaction and inspector verification in the Godot editor. Multiple attackers may still overlap because separation and target slots remain deferred.
 
 ## Creative boundary
 

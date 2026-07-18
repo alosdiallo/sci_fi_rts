@@ -2,6 +2,7 @@ class_name TestUnit
 extends CharacterBody2D
 
 const HIT_FEEDBACK_DURATION := 0.12
+const ATTACK_APPROACH_MARGIN := 8.0
 
 @export var definition: UnitDefinition
 @export var team_id: int = 0
@@ -20,6 +21,7 @@ var _current_health := 0.0
 var _is_alive := false
 var _health_initialized := false
 var _attack_target: TestUnit
+var _is_approaching_attack_target := false
 var _attack_cooldown_remaining := 0.0
 var _hit_feedback_remaining := 0.0
 
@@ -56,26 +58,13 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	_update_attack_target_state(delta)
+	if _update_attack_target_state(delta):
+		return
 	if not _has_movement_target:
 		velocity = Vector2.ZERO
 		return
 
-	var offset_to_target := _movement_target - global_position
-	var distance_to_target := offset_to_target.length()
-	var maximum_step := definition.movement_speed * delta
-
-	if (
-		distance_to_target <= definition.arrival_tolerance
-		or distance_to_target <= maximum_step
-	):
-		global_position = _movement_target
-		velocity = Vector2.ZERO
-		_has_movement_target = false
-		return
-
-	velocity = offset_to_target / distance_to_target * definition.movement_speed
-	move_and_slide()
+	_move_toward_ground_target(delta)
 
 
 func set_selected(selected: bool) -> void:
@@ -100,6 +89,10 @@ func set_attack_target(target: TestUnit) -> void:
 
 	_attack_target = target
 	_attack_cooldown_remaining = definition.attack_cooldown
+	_is_approaching_attack_target = (
+		global_position.distance_to(target.global_position)
+		> _get_preferred_firing_distance()
+	)
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
 	velocity = Vector2.ZERO
@@ -108,7 +101,9 @@ func set_attack_target(target: TestUnit) -> void:
 
 func clear_attack_target() -> void:
 	_attack_target = null
+	_is_approaching_attack_target = false
 	_attack_cooldown_remaining = 0.0
+	velocity = Vector2.ZERO
 	_update_target_indicator()
 
 
@@ -185,27 +180,78 @@ func _update_health_bar() -> void:
 	health_bar.visible = health_ratio < 1.0
 
 
-func _update_attack_target_state(delta: float) -> void:
+func _update_attack_target_state(delta: float) -> bool:
 	if not has_valid_attack_target():
 		clear_attack_target()
-		return
+		return false
 
 	_update_target_indicator()
-	var attack_range_squared := definition.attack_range * definition.attack_range
-	if global_position.distance_squared_to(_attack_target.global_position) > attack_range_squared:
+	var distance_to_target := global_position.distance_to(_attack_target.global_position)
+	var preferred_firing_distance := _get_preferred_firing_distance()
+	if distance_to_target > preferred_firing_distance + definition.arrival_tolerance:
+		_is_approaching_attack_target = true
 		_attack_cooldown_remaining = definition.attack_cooldown
-		return
+		_move_toward_attack_target(distance_to_target, preferred_firing_distance, delta)
+		return true
+
+	_is_approaching_attack_target = false
+	velocity = Vector2.ZERO
+	if distance_to_target > definition.attack_range:
+		_attack_cooldown_remaining = definition.attack_cooldown
+		return true
 
 	_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - delta, 0.0)
 	if not is_zero_approx(_attack_cooldown_remaining):
-		return
+		return true
 
 	var target := _attack_target
 	target.take_damage(definition.attack_damage)
 	if not target.is_alive():
 		clear_attack_target()
-		return
+		return true
 	_attack_cooldown_remaining = definition.attack_cooldown
+	return true
+
+
+func _get_preferred_firing_distance() -> float:
+	return maxf(definition.attack_range - ATTACK_APPROACH_MARGIN, 0.0)
+
+
+func _move_toward_attack_target(
+	distance_to_target: float,
+	preferred_firing_distance: float,
+	delta: float
+) -> void:
+	var direction_to_target := global_position.direction_to(_attack_target.global_position)
+	var distance_to_move := distance_to_target - preferred_firing_distance
+	var maximum_step := definition.movement_speed * delta
+
+	if distance_to_move <= maximum_step:
+		global_position += direction_to_target * distance_to_move
+		velocity = Vector2.ZERO
+		_is_approaching_attack_target = false
+		return
+
+	velocity = direction_to_target * definition.movement_speed
+	move_and_slide()
+
+
+func _move_toward_ground_target(delta: float) -> void:
+	var offset_to_target := _movement_target - global_position
+	var distance_to_target := offset_to_target.length()
+	var maximum_step := definition.movement_speed * delta
+
+	if (
+		distance_to_target <= definition.arrival_tolerance
+		or distance_to_target <= maximum_step
+	):
+		global_position = _movement_target
+		velocity = Vector2.ZERO
+		_has_movement_target = false
+		return
+
+	velocity = offset_to_target / distance_to_target * definition.movement_speed
+	move_and_slide()
 
 
 func _update_target_indicator() -> void:

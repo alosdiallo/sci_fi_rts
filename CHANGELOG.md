@@ -18,6 +18,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Combat Prototype Slice 1: authored maximum health, per-instance damageable state, conditional health bars, and safe unit death cleanup.
 - Combat Prototype Slice 2: prototype team IDs, contextual hostile-target commands, per-unit target state, and temporary geometric target feedback.
 - Combat Prototype Slice 3: validated attack damage, range, and cooldown data with deterministic no-pursuit instant-hit attacks and temporary hit outlines.
+- Approach and Spacing Slice 1: direct approach toward explicitly targeted stationary hostiles, stopping at an 8-pixel firing-range margin before existing cooldown-based attacks.
 
 ### Changed
 
