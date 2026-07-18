@@ -8,3 +8,4 @@ unit_id = &"test_unit_fast"
 display_name = "Test Unit Fast"
 movement_speed = 240.0
 arrival_tolerance = 4.0
+max_health = 80.0

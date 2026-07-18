@@ -15,6 +15,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Second Milestone 1 technical slice: four geometric placeholder units with click selection, drag-box selection, selection indicators, and empty-ground deselection.
 - Final Milestone 1 technical slice: right-click commands, map-clamped destinations, command replacement, and direct frame-rate-independent placeholder-unit movement.
 - First Milestone 2 technical slice: a typed `UnitDefinition` Resource and two neutral `.tres` definitions driving placeholder movement values.
+- Combat Prototype Slice 1: authored maximum health, per-instance damageable state, conditional health bars, and safe unit death cleanup.
 
 ### Changed
 
@@ -27,3 +28,4 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Confirmed the Free Settlements Army and opposing Earth–Moon expeditionary Marines, including their home-territory versus adaptable expeditionary doctrines.
 - Established the initial straightforward unit direction around infantry squads, Mars-capable buggies and rovers, drones, engineering, and logistics; removed walkers from version-one direction and left atmospheric hovercraft unapproved.
 - Added the provisional economy direction of regolith/feedstock and water ice/volatiles as spendable resources, constructed command capacity as an army-size limit, and visible physical gathering.
+- Added validated `max_health` unit data and a temporary debugger-callable damage hook for health and death verification without attack controls.

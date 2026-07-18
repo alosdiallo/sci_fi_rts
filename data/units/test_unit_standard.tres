@@ -8,3 +8,4 @@ unit_id = &"test_unit_standard"
 display_name = "Test Unit Standard"
 movement_speed = 180.0
 arrival_tolerance = 4.0
+max_health = 100.0
