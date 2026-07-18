@@ -32,24 +32,15 @@
 - Empty-ground clicks clear the current selection.
 - Right-click movement commands for selected units, with map-bound destination clamping and command replacement.
 - Direct frame-rate-independent movement reads speed and arrival tolerance from each unit's assigned definition and retains clean destination snapping.
-- A typed `UnitDefinition` Resource containing only generic identity, movement speed, arrival tolerance, and maximum health.
+- A typed `UnitDefinition` Resource containing generic identity, movement, health, and minimal prototype attack values.
 - Two neutral `.tres` test definitions assigned across the four placeholder instances; their 180 and 240 pixel-per-second speeds validate definition-driven behavior and are not final balance or canon.
 - Clear missing/invalid-definition errors that disable only the affected unit's movement while leaving it visible and selectable.
 - Combat Prototype Slice 1 adds authored maximum health, per-instance current health, damage reception, health bars shown only after damage, and one-shot unit death cleanup.
 - Combat Prototype Slice 2 assigns prototype-only integer teams and adds contextual hostile-target commands with selected-attacker target lines; it does not add attacks or damage dealing.
+- Combat Prototype Slice 3 adds validated damage, range, and cooldown data plus no-pursuit deterministic instant-hit attacks and brief temporary hit outlines.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice and the first two combat prototype slices are implemented, pending manual interaction and inspector verification in the Godot editor.
-
-### Temporary health test
-
-Until attacks are implemented, run the project, pause it in the debugger, and evaluate:
-
-```gdscript
-get_node("/root/Milestone1/Units/TestUnit1").debug_take_damage(25.0)
-```
-
-Resume to see the health bar. Repeat the call until the unit dies and is removed. `debug_take_damage()` is a temporary verification hook to remove when an approved attack path can apply damage.
+Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice and the first three combat prototype slices are implemented, pending manual interaction and inspector verification in the Godot editor.
 
 ## Creative boundary
 

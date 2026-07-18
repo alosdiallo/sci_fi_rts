@@ -9,3 +9,6 @@ display_name = "Test Unit Standard"
 movement_speed = 180.0
 arrival_tolerance = 4.0
 max_health = 100.0
+attack_damage = 20.0
+attack_range = 220.0
+attack_cooldown = 1.0

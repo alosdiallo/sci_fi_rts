@@ -17,6 +17,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - First Milestone 2 technical slice: a typed `UnitDefinition` Resource and two neutral `.tres` definitions driving placeholder movement values.
 - Combat Prototype Slice 1: authored maximum health, per-instance damageable state, conditional health bars, and safe unit death cleanup.
 - Combat Prototype Slice 2: prototype team IDs, contextual hostile-target commands, per-unit target state, and temporary geometric target feedback.
+- Combat Prototype Slice 3: validated attack damage, range, and cooldown data with deterministic no-pursuit instant-hit attacks and temporary hit outlines.
 
 ### Changed
 
@@ -31,3 +32,4 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Added the provisional economy direction of regolith/feedstock and water ice/volatiles as spendable resources, constructed command capacity as an army-size limit, and visible physical gathering.
 - Added validated `max_health` unit data and a temporary debugger-callable damage hook for health and death verification without attack controls.
 - Renamed the movement controller as a contextual unit-command controller while preserving ground movement and adding non-attacking hostile-target assignment.
+- Removed the temporary manual-damage hook after explicit target commands became capable of exercising health and death.

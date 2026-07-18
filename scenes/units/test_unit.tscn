@@ -29,6 +29,12 @@ points = PackedVector2Array(0, 0, 0, 0)
 width = 2.0
 default_color = Color(1, 0.2, 0.85, 0.9)
 
+[node name="HitIndicator" type="Line2D" parent="."]
+visible = false
+points = PackedVector2Array(-27, -27, 27, -27, 27, 27, -27, 27, -27, -27)
+width = 3.0
+default_color = Color(1, 1, 1, 1)
+
 [node name="HealthBar" type="Control" parent="."]
 visible = false
 layout_mode = 3

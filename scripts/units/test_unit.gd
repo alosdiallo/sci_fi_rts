@@ -1,11 +1,14 @@
 class_name TestUnit
 extends CharacterBody2D
 
+const HIT_FEEDBACK_DURATION := 0.12
+
 @export var definition: UnitDefinition
 @export var team_id: int = 0
 
 @onready var selection_indicator: Line2D = $SelectionIndicator
 @onready var target_indicator: Line2D = $TargetIndicator
+@onready var hit_indicator: Line2D = $HitIndicator
 @onready var health_bar: Control = $HealthBar
 @onready var health_fill: ColorRect = $HealthBar/Fill
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -17,11 +20,14 @@ var _current_health := 0.0
 var _is_alive := false
 var _health_initialized := false
 var _attack_target: TestUnit
+var _attack_cooldown_remaining := 0.0
+var _hit_feedback_remaining := 0.0
 
 
 func _ready() -> void:
 	selection_indicator.visible = false
 	target_indicator.visible = false
+	hit_indicator.visible = false
 	health_bar.visible = false
 	var validation_errors := _get_definition_validation_errors()
 	if validation_errors.is_empty():
@@ -40,8 +46,17 @@ func _ready() -> void:
 	set_physics_process(false)
 
 
+func _process(delta: float) -> void:
+	if _hit_feedback_remaining <= 0.0:
+		return
+
+	_hit_feedback_remaining = maxf(_hit_feedback_remaining - delta, 0.0)
+	if is_zero_approx(_hit_feedback_remaining):
+		hit_indicator.visible = false
+
+
 func _physics_process(delta: float) -> void:
-	_update_attack_target_state()
+	_update_attack_target_state(delta)
 	if not _has_movement_target:
 		velocity = Vector2.ZERO
 		return
@@ -84,6 +99,7 @@ func set_attack_target(target: TestUnit) -> void:
 		return
 
 	_attack_target = target
+	_attack_cooldown_remaining = definition.attack_cooldown
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
 	velocity = Vector2.ZERO
@@ -92,6 +108,7 @@ func set_attack_target(target: TestUnit) -> void:
 
 func clear_attack_target() -> void:
 	_attack_target = null
+	_attack_cooldown_remaining = 0.0
 	_update_target_indicator()
 
 
@@ -132,6 +149,7 @@ func take_damage(amount: float) -> void:
 		return
 
 	_current_health = clampf(_current_health - amount, 0.0, definition.max_health)
+	_show_hit_feedback()
 	_update_health_bar()
 	if is_zero_approx(_current_health):
 		_die()
@@ -151,11 +169,6 @@ func is_alive() -> bool:
 	return _is_alive
 
 
-# TEMPORARY: Call from the debugger to verify damage and death before attacks exist.
-func debug_take_damage(amount: float = 25.0) -> void:
-	take_damage(amount)
-
-
 func _get_definition_validation_errors() -> PackedStringArray:
 	if definition == null:
 		return PackedStringArray(["definition must be assigned."])
@@ -172,11 +185,27 @@ func _update_health_bar() -> void:
 	health_bar.visible = health_ratio < 1.0
 
 
-func _update_attack_target_state() -> void:
+func _update_attack_target_state(delta: float) -> void:
 	if not has_valid_attack_target():
 		clear_attack_target()
 		return
+
 	_update_target_indicator()
+	var attack_range_squared := definition.attack_range * definition.attack_range
+	if global_position.distance_squared_to(_attack_target.global_position) > attack_range_squared:
+		_attack_cooldown_remaining = definition.attack_cooldown
+		return
+
+	_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - delta, 0.0)
+	if not is_zero_approx(_attack_cooldown_remaining):
+		return
+
+	var target := _attack_target
+	target.take_damage(definition.attack_damage)
+	if not target.is_alive():
+		clear_attack_target()
+		return
+	_attack_cooldown_remaining = definition.attack_cooldown
 
 
 func _update_target_indicator() -> void:
@@ -191,6 +220,11 @@ func _update_target_indicator() -> void:
 	target_indicator.visible = true
 
 
+func _show_hit_feedback() -> void:
+	_hit_feedback_remaining = HIT_FEEDBACK_DURATION
+	hit_indicator.visible = true
+
+
 func _die() -> void:
 	if not _is_alive:
 		return
@@ -201,6 +235,8 @@ func _die() -> void:
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
 	clear_attack_target()
+	_hit_feedback_remaining = 0.0
+	hit_indicator.visible = false
 	velocity = Vector2.ZERO
 	remove_from_group(&"selectable_units")
 	collision_shape.set_deferred("disabled", true)
