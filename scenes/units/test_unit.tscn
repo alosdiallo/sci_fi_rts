@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/units/test_unit.gd" id="1_test_unit"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_test_unit"]
+size = Vector2(48, 48)
+
+[node name="TestUnit" type="CharacterBody2D" groups=["selectable_units"]]
+script = ExtResource("1_test_unit")
+
+[node name="Body" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-24, -24, 24, -24, 24, 24, -24, 24)
+color = Color(0.321569, 0.717647, 0.8, 1)
+
+[node name="BodyInset" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
+color = Color(0.105882, 0.247059, 0.298039, 1)
+
+[node name="SelectionIndicator" type="Line2D" parent="."]
+visible = false
+points = PackedVector2Array(-32, -32, 32, -32, 32, 32, -32, 32, -32, -32)
+width = 4.0
+default_color = Color(1, 0.878431, 0.2, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_test_unit")
