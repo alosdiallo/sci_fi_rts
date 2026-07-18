@@ -28,9 +28,9 @@ A classic 2D pixel-art real-time strategy game set during a war for control of M
 
 By the twenty-third century, the Martian colonies have developed into permanent settlements with their own industries, institutions, and political identity. After decades of supplying water, fuel, and industrial resources to the inner solar system, the colonies declare independence as **The Free Settlements of Mars**.
 
-Earth and its lunar industrial authorities refuse to recognize the declaration. An elite expeditionary force is deployed from the Earth–Moon system to restore control over Martian extraction infrastructure and interplanetary supply routes.
+Earth and its lunar industrial authorities refuse to recognize the declaration. An expeditionary Marine force is deployed from the Earth–Moon system to restore control over Martian extraction infrastructure and interplanetary supply routes.
 
-The Free Settlements defend Mars through entrenched local industry, mass-produced autonomous vehicles, artillery, and extensive knowledge of the terrain. The expeditionary force relies on orbital deployment, advanced sensors, precision weapons, and a small number of powerful armored walkers.
+The **Free Settlements Army** defends Mars as a conventional home-territory force with established bases, local industry, combined arms, specialized equipment, and extensive knowledge of the terrain. The Marines operate far from home with fewer personnel and constrained logistics, emphasizing adaptability, mobility, ingenuity, modular equipment, and platforms capable of filling multiple roles.
 
 All playable missions in the first version take place on Mars.
 
@@ -63,8 +63,10 @@ All playable missions in the first version take place on Mars.
 - Mars contains mature, permanent human settlements rather than temporary scientific outposts.
 - The Martian colonies have declared independence from Earth-aligned authorities.
 - The independent Martian political coalition is called **The Free Settlements of Mars**.
+- Its military is called the **Free Settlements Army**.
 - The Free Settlements originated as separate colonies and retain a decentralized or confederated political identity.
 - Earth and the Moon remain important to the conflict as centers of population, industry, shipbuilding, and military logistics.
+- The opposing deployed force is an expeditionary Marine force from the Earth–Moon system. The finalized name of its sponsoring political authority remains unresolved.
 - The war is fought partly over Martian water, fuel production, industrial resources, and control of interplanetary supply routes.
 
 ## Intended core game loop
@@ -145,13 +147,13 @@ The exact in-game resource system remains unresolved.
 
 # Playable Factions
 
-## The Free Settlements of Mars
+## Free Settlements Army
 
 ### Identity
 
-The Free Settlements are a confederation of established Martian communities defending their independence, infrastructure, and continued survival.
+The Free Settlements Army is the military of the Free Settlements of Mars, defending the settlements' independence, infrastructure, and continued survival.
 
-They possess local manufacturing capacity, established settlements, detailed terrain knowledge, and equipment designed specifically for Martian conditions.
+It is a conventional home-territory force with established bases, local manufacturing capacity, combined-arms experience, detailed terrain knowledge, and specialized equipment designed for Martian conditions.
 
 Their forces should communicate the idea:
 
@@ -159,20 +161,15 @@ Their forces should communicate the idea:
 
 ### Current mechanical direction
 
-The Free Settlements are provisionally envisioned as the more industrial and territorially entrenched faction.
+The Army's approved direction emphasizes:
 
-Possible characteristics include:
+- Established bases and local industry.
+- Conventional combined arms.
+- Specialized, locally manufactured vehicles.
+- Engineering and logistics suited to sustained territorial warfare.
+- Equipment designed for long-term operation on home territory.
 
-- Rugged, inexpensive autonomous vehicles.
-- Large numbers of replaceable ground units.
-- Strong artillery.
-- Durable fortifications.
-- Distributed production facilities.
-- Efficient repair and reconstruction.
-- Strong performance during prolonged environmental disruption.
-- Dependence on territorial control and industrial momentum.
-
-They should not merely be the faction with weaker units. Their advantages should come from production, redundancy, range, fortification, and their ability to sustain prolonged warfare.
+The Army should not be reduced to a swarm of individually weak units. Its equipment may be specialized and locally producible without being disposable or uniformly inferior.
 
 ### Political character
 
@@ -190,49 +187,33 @@ These tensions are provisional and require narrative development.
 
 ---
 
-## Earth–Lunar Expeditionary Force
+## Earth–Moon Expeditionary Marines
 
 ### Naming status
 
-The opposing faction does not yet have a finalized political or military name.
-
-**Artemis Expeditionary Command** is a provisional working name for its deployed military force.
+The opposing deployed force is confirmed to be an expeditionary Marine force from the Earth–Moon system. A more specific organizational name and the finalized name of its sponsoring political authority remain unresolved.
 
 ### Identity
 
-The expeditionary force is deployed from the Earth–Moon system to regain control of Martian infrastructure and restore access to strategically important resources and supply routes.
+The Marines are deployed from the Earth–Moon system to regain control of Martian infrastructure and restore access to strategically important resources and supply routes.
 
-Its forces are technologically advanced but expensive to transport, maintain, and replace.
+They operate far from home with fewer personnel and constrained logistics. Their doctrine prioritizes adaptability, mobility, ingenuity, modular equipment, and units capable of filling multiple roles.
 
 Their doctrine should communicate the idea:
 
-> We cannot match your numbers, so every unit must dominate its battlefield role.
+> We have to accomplish more with what we can bring.
 
 ### Current mechanical direction
 
-The expeditionary faction is provisionally envisioned as the smaller, more mobile, technologically advanced force.
+The Marines' approved direction emphasizes:
 
-Possible characteristics include:
+- Mobile, adaptable platforms rather than many narrowly specialized vehicles.
+- Reconnaissance and support drones.
+- Compact expeditionary engineering and logistics.
+- Modular equipment and units able to fill multiple roles.
+- Ingenuity under personnel, transport, and supply constraints.
 
-- Heavily armored walkers.
-- Orbital deployment or reinforcement.
-- Superior sensors and battlefield awareness.
-- Precision weapons.
-- Area-denial and anti-swarm systems.
-- Mobile or relocatable infrastructure.
-- Modular unit configurations.
-- High individual unit value.
-- Greater dependence on limited landing zones, supply windows, or specialized support.
-
-Its weaknesses may include:
-
-- High replacement costs.
-- Long production or reinforcement times.
-- Limited battlefield population.
-- Dependence on specialized units.
-- Vulnerability when isolated from support infrastructure.
-
-The faction should not simply possess universally superior units. Its power should be balanced by scarcity, logistical dependence, and the consequences of losing expensive assets.
+The Marines should not be treated as a universally superior elite faction. Their flexibility and expeditionary focus must involve meaningful tradeoffs rather than making every Marine unit categorically better than its Army counterpart.
 
 ---
 
@@ -240,17 +221,15 @@ The faction should not simply possess universally superior units. Its power shou
 
 The central faction contrast is currently:
 
-| Free Settlements of Mars | Earth–Lunar Expeditionary Force |
+| Free Settlements Army | Earth–Moon Expeditionary Marines |
 |---|---|
-| Local and established | Distant and expeditionary |
-| Industrial volume | Concentrated technological superiority |
-| Entrenched territorial control | Mobility and rapid deployment |
-| Replaceable autonomous units | Expensive specialized units |
-| Artillery and fortification | Walkers and precision weapons |
-| Distributed production | Limited high-value infrastructure |
-| Wins through endurance | Wins through maneuver and force concentration |
+| Conventional home-territory force | Distant expeditionary force |
+| Established bases and local industry | Fewer personnel and constrained logistics |
+| Combined arms and specialized equipment | Adaptable, modular, multi-role equipment |
+| Sustained territorial warfare | Mobility and expeditionary ingenuity |
+| More specialized local vehicles | More adaptable platforms and drones |
 
-This is an approved direction, but exact faction mechanics remain provisional until tested.
+This is an approved direction, but exact faction mechanics remain provisional until tested. Neither side should be reduced to a weak swarm versus universally superior elite units.
 
 Both factions should use compatible underlying RTS systems where practical. Their presentation and strategic behavior may differ substantially without requiring two entirely separate game engines.
 
@@ -313,29 +292,32 @@ The economy is not yet finalized.
 
 ## Provisional resource model
 
-A possible economy could use two principal resource categories:
-
-### Water and volatiles
-
-Used for:
-
-- Power or fuel production.
-- Advanced units.
-- Reinforcements.
-- Life-support-related infrastructure.
-- Strategic progression.
+The current provisional economy direction uses two spendable resource categories plus a constructed capacity system.
 
 ### Regolith and industrial feedstock
 
-Used for:
+The common construction and manufacturing resource, potentially used for:
 
-- Buildings.
-- Fortifications.
-- Basic vehicles.
-- Repairs.
-- Ammunition or replacement components.
+- Buildings and field infrastructure.
+- Vehicles and other manufactured equipment.
+- Repairs and replacement components.
 
-A simpler single-resource model may be preferable if two resources do not meaningfully improve gameplay.
+### Water ice and volatiles
+
+The more concentrated strategic resource. Its exact uses, relative scarcity, and relationship to production remain unresolved.
+
+### Command bandwidth or command capacity
+
+Command capacity is constructed and limits army size. It is not collected or spent as a resource. Its exact presentation, construction requirements, and limit rules remain unresolved.
+
+### Gathering direction
+
+- Resource control should require expansion into exposed and contested territory.
+- Gathering should be visible and physical, with units traveling between extraction sites and processing infrastructure.
+- The Free Settlements Army may eventually use specialized harvesters, ice haulers, and recovery vehicles.
+- The Marines may eventually use adaptable utility rovers, cargo drones, or deployable extraction systems.
+
+These economic units and mechanics remain provisional and are not implemented. Prices, collection rates, resource ratios, processing times, capacity values, and final unit names are unresolved.
 
 ---
 
@@ -368,6 +350,23 @@ Exact targeting, damage, accuracy, and armor rules remain unresolved.
 ---
 
 # Units and Buildings
+
+## Initial unit direction
+
+The initial roster should remain mechanically straightforward. Both factions will focus primarily on:
+
+- Infantry squads.
+- Mars-capable buggies and rovers.
+- Reconnaissance and support drones.
+- Engineering and logistics units.
+
+Infantry should generally be represented as selectable squads rather than every soldier being an independent unit.
+
+The Free Settlements Army may rely more on specialized, locally manufactured vehicles. The Marines may rely more on adaptable platforms, drones, and compact expeditionary logistics.
+
+Walkers are removed from the current version-one direction. Conventional atmospheric hovercraft are not currently approved. More speculative vehicles may be reconsidered later, but they are not version-one requirements.
+
+Exact rosters, final unit names, roles, quantities, and balance values remain unresolved.
 
 ## Content ceiling
 
@@ -485,17 +484,17 @@ Possible visual qualities:
 - Buried or reinforced structures.
 - Exposed conduits, fabrication systems, and local materials.
 
-### Expeditionary force
+### Expeditionary Marines
 
 Possible visual qualities:
 
-- Tall silhouettes.
-- Armored walkers.
-- Standardized military design.
+- Compact expeditionary forms.
+- Modular and adaptable equipment.
+- Standardized components used across multiple roles.
 - Advanced sensors.
-- Precision construction.
+- Mobile support and logistics elements.
 - Orbital or aerospace influence.
-- More compact but higher-value infrastructure.
+- Infrastructure suited to deployment far from home.
 
 Faction colors, palettes, sprite dimensions, tile scale, animation frame counts, and camera resolution remain unresolved.
 
@@ -572,7 +571,7 @@ Milestone 1 does not include:
 
 - What exact event triggers the Martian declaration of independence?
 - Who governs the Earth–Moon system?
-- What is the finalized name of the expeditionary faction?
+- What is the finalized organizational name of the expeditionary Marines and their sponsoring political authority?
 - Are all Martian settlements members of the Free Settlements?
 - Are any settlements neutral or loyal to Earth?
 - How centralized is the Free Settlements government?
@@ -581,21 +580,22 @@ Milestone 1 does not include:
 
 ## Economy
 
-- Will the game use one resource or multiple resources?
 - Is water collected directly, processed, or transported?
 - How is regolith converted into usable construction material?
 - Is electrical power a strategic system?
 - Are supply lines simulated directly or represented abstractly?
 - How vulnerable should remote extraction sites be?
+- What are the exact uses of each spendable resource?
+- How is command capacity constructed, presented, and increased?
 
 ## Factions
 
 - What is each faction's defining mechanic?
 - How are expeditionary reinforcements produced or delivered?
-- How does Free Settlements manufacturing differ from conventional production?
+- How does Free Settlements Army manufacturing differ from conventional production?
 - What population limits apply to each faction?
-- How replaceable should expeditionary walkers be?
-- How should artillery be balanced against mobility?
+- How should specialized Army equipment be balanced against adaptable Marine platforms?
+- How much role overlap should Marine units have before their roles become unclear?
 
 ## Combat and movement
 
@@ -620,7 +620,7 @@ Milestone 1 does not include:
 - What internal pixel resolution will be used?
 - What tile dimensions will be used?
 - Will the battlefield be orthographic top-down or use an isometric-like angle?
-- How many directional frames are needed for vehicles and walkers?
+- How many directional frames are needed for infantry squads, vehicles, and drones?
 - What interface layout best supports the intended battlefield population?
 - What accessibility options are required?
 

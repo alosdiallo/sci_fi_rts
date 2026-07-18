@@ -27,7 +27,7 @@ See [GAME_DESIGN.md](GAME_DESIGN.md) for the design boundaries, [ROADMAP.md](ROA
 
 ## Setting status
 
-All playable missions in the first version take place on Mars. The **Free Settlements of Mars** is the confirmed Martian faction, built around entrenched local industry and mass production. Its opposing Earth–Lunar expeditionary faction is a smaller, elite force, but its finalized political or military name remains unresolved. Further names, plot details, exact faction mechanics, and other material identified as provisional or unresolved in the design document should not be invented without approval.
+All playable missions in the first version take place on Mars. The **Free Settlements Army** is the conventional home-territory military of the **Free Settlements of Mars**, while an expeditionary Marine force from the Earth–Moon system operates with fewer personnel and constrained logistics. The Army emphasizes established bases, local industry, combined arms, and specialized equipment; the Marines emphasize adaptability, mobility, modular equipment, drones, and multi-role platforms. Neither faction is intended as a simplistic weak swarm or universally superior elite force.
 
 ## Running the project
 

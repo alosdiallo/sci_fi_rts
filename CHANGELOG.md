@@ -21,6 +21,9 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Replaced the temporary README placeholder with useful project documentation.
 - Approved **Red Dust, Cold Iron** as the working title.
 - Confirmed that all version-one playable missions take place on Mars.
-- Confirmed the **Free Settlements of Mars** as the Martian faction and the central contrast of entrenched local mass production against a smaller, elite Earth–Lunar expeditionary force; the expeditionary faction's finalized name remains unresolved.
+- Confirmed the **Free Settlements of Mars** as the Martian political coalition and the Earth–Moon expeditionary opposition.
 - Set `scenes/main/milestone_1.tscn` as the main scene and added WASD and arrow-key camera input actions.
 - Replaced placeholder-unit movement constants with validated, per-instance definition assignments while preserving Milestone 1 behavior.
+- Confirmed the Free Settlements Army and opposing Earth–Moon expeditionary Marines, including their home-territory versus adaptable expeditionary doctrines.
+- Established the initial straightforward unit direction around infantry squads, Mars-capable buggies and rovers, drones, engineering, and logistics; removed walkers from version-one direction and left atmospheric hovercraft unapproved.
+- Added the provisional economy direction of regolith/feedstock and water ice/volatiles as spendable resources, constructed command capacity as an army-size limit, and visible physical gathering.

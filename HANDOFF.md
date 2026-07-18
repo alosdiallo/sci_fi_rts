@@ -9,8 +9,12 @@
 - Single-player first; two asymmetric playable factions.
 - All playable missions in version one take place on Mars.
 - The **Free Settlements of Mars** is the confirmed Martian faction.
-- The opposing Earth–Lunar expeditionary faction does not yet have a finalized political or military name.
-- The central faction direction is entrenched local industry and mass production versus a smaller, elite expeditionary force.
+- Its military is the **Free Settlements Army**, a conventional home-territory force with established bases, local industry, combined arms, specialized equipment, and sustained territorial warfare.
+- The opposing force is an expeditionary Marine force from the Earth–Moon system; its more specific organizational name and sponsoring political authority remain unresolved.
+- The Marines operate with fewer personnel and constrained logistics, emphasizing adaptability, mobility, ingenuity, modular equipment, drones, and multi-role platforms.
+- Neither faction is a simplistic weak swarm or universally superior elite force.
+- The initial roster direction emphasizes selectable infantry squads, Mars-capable buggies and rovers, reconnaissance and support drones, and engineering and logistics units.
+- Walkers are removed from the version-one direction; conventional atmospheric hovercraft are not currently approved.
 - Long-term loop: construction, gathering, production, simple deterministic combat, and scripted campaign missions.
 - Limited on-screen unit counts and minimal physics.
 - Modular, data-driven unit and building definitions.
@@ -37,7 +41,7 @@ Milestone 1 remains technically complete. The first Milestone 2 data-driven unit
 
 ## Creative boundary
 
-The Mars setting, Mars-only version-one mission scope, Free Settlements name, and central faction contrast are confirmed. The expeditionary faction's finalized name, exact faction mechanics, campaign details, and other items marked provisional or unresolved in `GAME_DESIGN.md` still require user approval. Do not turn provisional material into canon or invent additional lore, names, or plot.
+The Mars setting, Mars-only version-one mission scope, Free Settlements and Army names, Marine identity, central faction contrast, and broad initial unit categories are confirmed. The two-spendable-resource-plus-command-capacity economy is provisional and unimplemented. Exact faction mechanics, Marine organizational and political names, rosters, unit names, balance, economic values, campaign details, and other unresolved material still require user approval.
 
 ## Next-session rules
 
