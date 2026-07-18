@@ -1,4 +1,4 @@
-class_name MoveCommandController
+class_name UnitCommandController
 extends Node
 
 @export var test_map: TestMap
@@ -10,19 +10,48 @@ func _unhandled_input(event: InputEvent) -> void:
 		and event.button_index == MOUSE_BUTTON_RIGHT
 		and event.pressed
 	):
-		_issue_movement_command(event.position)
+		_handle_contextual_command(event.position)
 
 
-func _issue_movement_command(screen_position: Vector2) -> void:
+func _handle_contextual_command(screen_position: Vector2) -> void:
 	if test_map == null:
-		push_error("MoveCommandController requires a TestMap reference.")
+		push_error("UnitCommandController requires a TestMap reference.")
 		return
 
 	var world_position := _screen_to_world(screen_position)
+	var clicked_unit := _get_unit_at_world_position(world_position)
+	if clicked_unit != null:
+		_issue_target_command(clicked_unit)
+		return
+
+	_issue_movement_command(world_position)
+
+
+func _issue_target_command(clicked_unit: TestUnit) -> void:
+	for unit in _get_selected_units():
+		if unit.is_hostile_to(clicked_unit):
+			unit.set_attack_target(clicked_unit)
+
+
+func _issue_movement_command(world_position: Vector2) -> void:
 	var movement_target := _clamp_to_map_bounds(world_position)
 
 	for unit in _get_selected_units():
 		unit.set_movement_target(movement_target)
+
+
+func _get_unit_at_world_position(world_position: Vector2) -> TestUnit:
+	var query := PhysicsPointQueryParameters2D.new()
+	query.position = world_position
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+
+	var results := get_viewport().world_2d.direct_space_state.intersect_point(query)
+	for result: Dictionary in results:
+		var clicked_unit := result.get("collider") as TestUnit
+		if clicked_unit != null:
+			return clicked_unit
+	return null
 
 
 func _get_selected_units() -> Array[TestUnit]:

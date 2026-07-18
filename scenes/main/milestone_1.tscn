@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://scripts/camera/camera_controller.gd" id="2_camera"]
 [ext_resource type="PackedScene" path="res://scenes/units/test_unit.tscn" id="3_test_unit"]
 [ext_resource type="Script" path="res://scripts/selection/selection_controller.gd" id="4_selection"]
-[ext_resource type="Script" path="res://scripts/commands/move_command_controller.gd" id="5_move_command"]
+[ext_resource type="Script" path="res://scripts/commands/unit_command_controller.gd" id="5_unit_command"]
 [ext_resource type="Resource" path="res://data/units/test_unit_standard.tres" id="6_standard"]
 [ext_resource type="Resource" path="res://data/units/test_unit_fast.tres" id="7_fast"]
 
@@ -23,18 +23,22 @@ test_map = NodePath("../TestMap")
 [node name="TestUnit1" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(768, 768)
 definition = ExtResource("6_standard")
+team_id = 1
 
 [node name="TestUnit2" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(1280, 768)
 definition = ExtResource("7_fast")
+team_id = 1
 
 [node name="TestUnit3" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(768, 1280)
 definition = ExtResource("6_standard")
+team_id = 2
 
 [node name="TestUnit4" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(1280, 1280)
 definition = ExtResource("7_fast")
+team_id = 2
 
 [node name="SelectionInterface" type="CanvasLayer" parent="." node_paths=PackedStringArray("selection_rectangle")]
 script = ExtResource("4_selection")
@@ -45,6 +49,6 @@ visible = false
 mouse_filter = 2
 color = Color(0.2, 0.75, 1, 0.25)
 
-[node name="MoveCommandController" type="Node" parent="." node_paths=PackedStringArray("test_map")]
-script = ExtResource("5_move_command")
+[node name="UnitCommandController" type="Node" parent="." node_paths=PackedStringArray("test_map")]
+script = ExtResource("5_unit_command")
 test_map = NodePath("../TestMap")

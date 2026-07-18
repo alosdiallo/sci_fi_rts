@@ -36,9 +36,10 @@
 - Two neutral `.tres` test definitions assigned across the four placeholder instances; their 180 and 240 pixel-per-second speeds validate definition-driven behavior and are not final balance or canon.
 - Clear missing/invalid-definition errors that disable only the affected unit's movement while leaving it visible and selectable.
 - Combat Prototype Slice 1 adds authored maximum health, per-instance current health, damage reception, health bars shown only after damage, and one-shot unit death cleanup.
+- Combat Prototype Slice 2 assigns prototype-only integer teams and adds contextual hostile-target commands with selected-attacker target lines; it does not add attacks or damage dealing.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice and the health-only first combat prototype slice are implemented, pending manual interaction and inspector verification in the Godot editor.
+Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice and the first two combat prototype slices are implemented, pending manual interaction and inspector verification in the Godot editor.
 
 ### Temporary health test
 
