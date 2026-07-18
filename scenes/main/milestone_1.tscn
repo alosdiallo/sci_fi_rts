@@ -1,10 +1,12 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/maps/test_map.tscn" id="1_test_map"]
 [ext_resource type="Script" path="res://scripts/camera/camera_controller.gd" id="2_camera"]
 [ext_resource type="PackedScene" path="res://scenes/units/test_unit.tscn" id="3_test_unit"]
 [ext_resource type="Script" path="res://scripts/selection/selection_controller.gd" id="4_selection"]
 [ext_resource type="Script" path="res://scripts/commands/move_command_controller.gd" id="5_move_command"]
+[ext_resource type="Resource" path="res://data/units/test_unit_standard.tres" id="6_standard"]
+[ext_resource type="Resource" path="res://data/units/test_unit_fast.tres" id="7_fast"]
 
 [node name="Milestone1" type="Node2D"]
 
@@ -20,15 +22,19 @@ test_map = NodePath("../TestMap")
 
 [node name="TestUnit1" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(768, 768)
+definition = ExtResource("6_standard")
 
 [node name="TestUnit2" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(1280, 768)
+definition = ExtResource("7_fast")
 
 [node name="TestUnit3" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(768, 1280)
+definition = ExtResource("6_standard")
 
 [node name="TestUnit4" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(1280, 1280)
+definition = ExtResource("7_fast")
 
 [node name="SelectionInterface" type="CanvasLayer" parent="." node_paths=PackedStringArray("selection_rectangle")]
 script = ExtResource("4_selection")

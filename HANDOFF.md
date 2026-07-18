@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early-stage Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. The project remains in pre-production. Milestone 1 is implemented: the repository contains a bounded geometric test map, keyboard-controlled boundary-clamped camera, placeholder unit selection, and direct right-click unit movement.
+**Red Dust, Cold Iron** is the working title of an early-stage Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. The project remains in pre-production. Milestone 1 is implemented, and the first Milestone 2 slice adds typed, data-driven definitions for the generic placeholder units.
 
 ## Confirmed
 
@@ -27,10 +27,13 @@
 - Single-click and normalized drag-box selection with visible selected-state indicators.
 - Empty-ground clicks clear the current selection.
 - Right-click movement commands for selected units, with map-bound destination clamping and command replacement.
-- Direct frame-rate-independent movement at an exported default speed of 180 pixels per second, with a 4-pixel default arrival tolerance and clean destination snapping.
+- Direct frame-rate-independent movement reads speed and arrival tolerance from each unit's assigned definition and retains clean destination snapping.
+- A typed `UnitDefinition` Resource containing only generic identity, movement speed, and arrival tolerance.
+- Two neutral `.tres` test definitions assigned across the four placeholder instances; their 180 and 240 pixel-per-second speeds validate definition-driven behavior and are not final balance or canon.
+- Clear missing/invalid-definition errors that disable only the affected unit's movement while leaving it visible and selectable.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-Milestone 1 is technically complete, pending manual interaction verification in the Godot editor.
+Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice is implemented, pending manual interaction and inspector verification in the Godot editor.
 
 ## Creative boundary
 
