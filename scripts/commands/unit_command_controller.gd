@@ -28,16 +28,16 @@ func _handle_contextual_command(screen_position: Vector2) -> void:
 
 
 func _issue_target_command(clicked_unit: TestUnit) -> void:
+	var map_bounds := test_map.get_map_bounds()
 	for unit in _get_selected_units():
 		if unit.is_hostile_to(clicked_unit):
-			unit.set_attack_target(clicked_unit)
+			unit.set_attack_target(clicked_unit, map_bounds)
 
 
 func _issue_movement_command(world_position: Vector2) -> void:
-	var movement_target := _clamp_to_map_bounds(world_position)
-
+	var map_bounds := test_map.get_map_bounds()
 	for unit in _get_selected_units():
-		unit.set_movement_target(movement_target)
+		unit.set_movement_target(world_position, map_bounds)
 
 
 func _get_unit_at_world_position(world_position: Vector2) -> TestUnit:
@@ -64,11 +64,3 @@ func _get_selected_units() -> Array[TestUnit]:
 
 func _screen_to_world(screen_position: Vector2) -> Vector2:
 	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
-
-
-func _clamp_to_map_bounds(world_position: Vector2) -> Vector2:
-	var map_bounds := test_map.get_map_bounds()
-	return Vector2(
-		clampf(world_position.x, map_bounds.position.x, map_bounds.end.x),
-		clampf(world_position.y, map_bounds.position.y, map_bounds.end.y)
-	)

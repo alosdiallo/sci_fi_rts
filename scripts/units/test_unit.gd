@@ -3,6 +3,10 @@ extends CharacterBody2D
 
 const HIT_FEEDBACK_DURATION := 0.12
 const ATTACK_APPROACH_MARGIN := 8.0
+const APPROACH_TARGET_REFRESH_DISTANCE := 8.0
+const APPROACH_TARGET_REFRESH_DISTANCE_SQUARED := (
+	APPROACH_TARGET_REFRESH_DISTANCE * APPROACH_TARGET_REFRESH_DISTANCE
+)
 
 @export var definition: UnitDefinition
 @export var team_id: int = 0
@@ -22,6 +26,11 @@ var _is_alive := false
 var _health_initialized := false
 var _attack_target: TestUnit
 var _is_approaching_attack_target := false
+var _cached_target_position := Vector2.ZERO
+var _cached_approach_destination := Vector2.ZERO
+var _has_cached_approach_destination := false
+var _map_bounds := Rect2()
+var _has_map_bounds := false
 var _attack_cooldown_remaining := 0.0
 var _hit_feedback_remaining := 0.0
 
@@ -77,21 +86,24 @@ func is_selected() -> bool:
 	return _is_selected
 
 
-func set_movement_target(target: Vector2) -> void:
+func set_movement_target(target: Vector2, map_bounds: Rect2 = Rect2()) -> void:
 	clear_attack_target()
-	_movement_target = target
+	_set_map_bounds(map_bounds)
+	_movement_target = _clamp_to_map_bounds(target)
 	_has_movement_target = true
 
 
-func set_attack_target(target: TestUnit) -> void:
+func set_attack_target(target: TestUnit, map_bounds: Rect2 = Rect2()) -> void:
 	if target == self or not is_hostile_to(target):
 		return
 
+	_set_map_bounds(map_bounds)
 	_attack_target = target
 	_attack_cooldown_remaining = definition.attack_cooldown
+	_refresh_approach_destination()
 	_is_approaching_attack_target = (
-		global_position.distance_to(target.global_position)
-		> _get_preferred_firing_distance()
+		global_position.distance_squared_to(target.global_position)
+		> definition.attack_range * definition.attack_range
 	)
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
@@ -102,6 +114,9 @@ func set_attack_target(target: TestUnit) -> void:
 func clear_attack_target() -> void:
 	_attack_target = null
 	_is_approaching_attack_target = false
+	_cached_target_position = Vector2.ZERO
+	_cached_approach_destination = Vector2.ZERO
+	_has_cached_approach_destination = false
 	_attack_cooldown_remaining = 0.0
 	velocity = Vector2.ZERO
 	_update_target_indicator()
@@ -186,19 +201,30 @@ func _update_attack_target_state(delta: float) -> bool:
 		return false
 
 	_update_target_indicator()
-	var distance_to_target := global_position.distance_to(_attack_target.global_position)
-	var preferred_firing_distance := _get_preferred_firing_distance()
-	if distance_to_target > preferred_firing_distance + definition.arrival_tolerance:
-		_is_approaching_attack_target = true
+	var distance_to_target_squared := global_position.distance_squared_to(
+		_attack_target.global_position
+	)
+	var attack_range_squared := definition.attack_range * definition.attack_range
+	if distance_to_target_squared > attack_range_squared:
 		_attack_cooldown_remaining = definition.attack_cooldown
-		_move_toward_attack_target(distance_to_target, preferred_firing_distance, delta)
+		_update_approach_destination_if_needed()
+		if not _is_approaching_attack_target:
+			_is_approaching_attack_target = true
+		var reached_destination := _move_toward_approach_destination(delta)
+		if (
+			reached_destination
+			and global_position.distance_squared_to(_attack_target.global_position)
+			> _get_preferred_firing_distance() * _get_preferred_firing_distance()
+		):
+			_refresh_approach_destination()
+			_is_approaching_attack_target = (
+				global_position.distance_squared_to(_cached_approach_destination)
+				> definition.arrival_tolerance * definition.arrival_tolerance
+			)
 		return true
 
 	_is_approaching_attack_target = false
 	velocity = Vector2.ZERO
-	if distance_to_target > definition.attack_range:
-		_attack_cooldown_remaining = definition.attack_cooldown
-		return true
 
 	_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - delta, 0.0)
 	if not is_zero_approx(_attack_cooldown_remaining):
@@ -217,23 +243,49 @@ func _get_preferred_firing_distance() -> float:
 	return maxf(definition.attack_range - ATTACK_APPROACH_MARGIN, 0.0)
 
 
-func _move_toward_attack_target(
-	distance_to_target: float,
-	preferred_firing_distance: float,
-	delta: float
-) -> void:
-	var direction_to_target := global_position.direction_to(_attack_target.global_position)
-	var distance_to_move := distance_to_target - preferred_firing_distance
-	var maximum_step := definition.movement_speed * delta
-
-	if distance_to_move <= maximum_step:
-		global_position += direction_to_target * distance_to_move
-		velocity = Vector2.ZERO
-		_is_approaching_attack_target = false
+func _update_approach_destination_if_needed() -> void:
+	if not _has_cached_approach_destination:
+		_refresh_approach_destination()
 		return
 
-	velocity = direction_to_target * definition.movement_speed
+	if (
+		_cached_target_position.distance_squared_to(_attack_target.global_position)
+		>= APPROACH_TARGET_REFRESH_DISTANCE_SQUARED
+	):
+		_refresh_approach_destination()
+
+
+func _refresh_approach_destination() -> void:
+	_cached_target_position = _attack_target.global_position
+	var target_to_attacker := global_position - _cached_target_position
+	var direction_from_target := Vector2.RIGHT
+	if not target_to_attacker.is_zero_approx():
+		direction_from_target = target_to_attacker.normalized()
+
+	_cached_approach_destination = _clamp_to_map_bounds(
+		_cached_target_position + direction_from_target * _get_preferred_firing_distance()
+	)
+	_has_cached_approach_destination = true
+
+
+func _move_toward_approach_destination(delta: float) -> bool:
+	var offset_to_destination := _cached_approach_destination - global_position
+	var distance_to_destination := offset_to_destination.length()
+	var maximum_step := definition.movement_speed * delta
+
+	if (
+		distance_to_destination <= definition.arrival_tolerance
+		or distance_to_destination <= maximum_step
+	):
+		global_position = _clamp_to_map_bounds(_cached_approach_destination)
+		velocity = Vector2.ZERO
+		_is_approaching_attack_target = false
+		return true
+
+	velocity = offset_to_destination / distance_to_destination * definition.movement_speed
 	move_and_slide()
+	global_position = _clamp_to_map_bounds(global_position)
+	return false
 
 
 func _move_toward_ground_target(delta: float) -> void:
@@ -245,13 +297,53 @@ func _move_toward_ground_target(delta: float) -> void:
 		distance_to_target <= definition.arrival_tolerance
 		or distance_to_target <= maximum_step
 	):
-		global_position = _movement_target
+		global_position = _clamp_to_map_bounds(_movement_target)
 		velocity = Vector2.ZERO
 		_has_movement_target = false
 		return
 
 	velocity = offset_to_target / distance_to_target * definition.movement_speed
 	move_and_slide()
+	global_position = _clamp_to_map_bounds(global_position)
+
+
+func _set_map_bounds(map_bounds: Rect2) -> void:
+	_has_map_bounds = map_bounds.size.x > 0.0 and map_bounds.size.y > 0.0
+	_map_bounds = map_bounds if _has_map_bounds else Rect2()
+
+
+func _clamp_to_map_bounds(world_position: Vector2) -> Vector2:
+	if not _has_map_bounds:
+		return world_position
+
+	var footprint_half_extents := _get_footprint_half_extents()
+	var minimum_position := _map_bounds.position + footprint_half_extents
+	var maximum_position := _map_bounds.end - footprint_half_extents
+	return Vector2(
+		_clamp_axis(world_position.x, minimum_position.x, maximum_position.x),
+		_clamp_axis(world_position.y, minimum_position.y, maximum_position.y)
+	)
+
+
+func _get_footprint_half_extents() -> Vector2:
+	if collision_shape == null or collision_shape.shape == null:
+		return Vector2.ZERO
+
+	var shape_scale := collision_shape.scale.abs()
+	if collision_shape.shape is RectangleShape2D:
+		var rectangle_shape := collision_shape.shape as RectangleShape2D
+		return rectangle_shape.size * 0.5 * shape_scale
+	if collision_shape.shape is CircleShape2D:
+		var circle_shape := collision_shape.shape as CircleShape2D
+		return Vector2.ONE * circle_shape.radius * shape_scale
+
+	return Vector2.ZERO
+
+
+func _clamp_axis(value: float, minimum: float, maximum: float) -> float:
+	if minimum > maximum:
+		return (minimum + maximum) * 0.5
+	return clampf(value, minimum, maximum)
 
 
 func _update_target_indicator() -> void:
