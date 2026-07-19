@@ -27,7 +27,7 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Milestone 2 Cleanup Slice 1 — simulation discovery and footprint diagnostics
+- **Active work:** Milestone 2 Cleanup Slice 2 — native headless validation
 - **Last committed checkpoint:** Approach and Spacing Slice 4 — deterministic angular attack slots
 - **Current playable state:** one bounded technical test map with camera controls, four generic units, selection, movement, data-driven unit values, prototype teams, explicit targeting, direct approach, health, cooldown-based instant-hit combat, death cleanup, footprint-aware bounds, moving-target tracking, friendly separation, and deterministic angular attack slots
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
@@ -95,13 +95,19 @@ Status: **Complete**
 
 Slice 4 was manually accepted, committed, and pushed. Milestone 2C is complete.
 
-## Active work: Milestone 2 Cleanup Slice 1
+## Active work: Milestone 2 Cleanup Slice 2
 
 The technical-foundation audit is recorded in `MILESTONE_2_REVIEW.md`. It reviews current responsibilities, refactor timing, temporary visuals, validation, regression coverage, automated checks, main-scene continuity, and navigation readiness.
 
-Cleanup Slice 1 is active in the working tree. It separates simulation-wide unit discovery from selection eligibility with a neutral `test_units` group and reports missing or unsupported footprint data once per affected unit while preserving center-only fallback behavior.
+Cleanup Slice 1 separated simulation-wide unit discovery from selection eligibility with a neutral `test_units` group and added one-time missing/unsupported-footprint diagnostics while preserving center-only fallback behavior.
 
-The slice is not complete until headless checks pass, interaction behavior is manually verified, the final diff is reviewed, and the changes are committed and pushed.
+Cleanup Slice 2 is active in the working tree. It adds a repository-native GDScript runner for deterministic definition, health, hostility, targeting, footprint, firing-distance, target-refresh, and angular-slot checks:
+
+```bash
+godot --headless --path . --script res://tests/run_validation.gd
+```
+
+The cleanup phase remains active until the full manual interaction regression passes, the final diff is reviewed, and the changes are committed and pushed.
 
 ## Next implementation sequence
 
@@ -117,7 +123,7 @@ Dependencies:
 
 Work:
 
-- Complete and verify Cleanup Slice 1.
+- Complete and verify Cleanup Slice 2.
 - Run the full manual regression checklist.
 - Review warnings, node ownership, naming, and temporary debug visuals.
 - Remove or explicitly retain temporary prototype-only feedback.

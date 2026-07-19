@@ -25,6 +25,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Development and implementation plan tracking milestone status, active work, dependencies, approval gates, next steps, and deferred scope.
 - Milestone 2 technical-foundation review covering responsibilities, refactor options, temporary visuals, validation, regression coverage, automated checks, main-scene continuity, and navigation readiness.
 - Milestone 2 Cleanup Slice 1: neutral `test_units` discovery for separation and attack slots, plus one-time diagnostics for center-only footprint fallback.
+- Milestone 2 Cleanup Slice 2: a native Godot headless validation runner for stable definition, health, targeting, footprint, approach-threshold, and angular-slot logic.
 
 ### Changed
 

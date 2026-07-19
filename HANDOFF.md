@@ -43,13 +43,14 @@
 - Approach and Spacing Slice 3 adds capped deterministic friendly-only separation during ground movement, attack approach, and severe idle overlap without changing physical collision behavior.
 - Approach and Spacing Slice 4 adds stable `NodePath`-ordered angular firing slots for living same-team attackers sharing an explicit hostile target.
 - Milestone 2 Cleanup Slice 1 separates simulation discovery into a neutral `test_units` group and adds one-time footprint-fallback diagnostics without invalidating affected units.
+- Milestone 2 Cleanup Slice 2 adds a native headless GDScript runner covering definition validation, health and damage, hostility and targeting, footprint calculations, firing distance, target refresh, and angular slot angles.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
 Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing is complete. Slice 4 was manually accepted, committed, and pushed.
 
 ## Active work
 
-Milestone 2 Cleanup Slice 1 is active in the working tree. Friendly separation and angular attack slots now discover living units through `test_units`; selection and contextual command eligibility remain on `selectable_units`. Missing, empty, or unsupported collision shapes retain center-only fallback and produce at most one identifying warning per unit lifecycle. Headless checks, manual interaction verification, final diff review, and commit/push remain required.
+Milestone 2 Cleanup Slice 2 is active in the working tree. Run it with `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd` on the current development machine, or replace the executable path with `godot` where it is available on `PATH`. Pointer behavior, camera feel, visual feedback, separation stability, and end-to-end slot movement remain manual. Final manual regression, diff review, and commit/push remain required before cleanup is complete.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

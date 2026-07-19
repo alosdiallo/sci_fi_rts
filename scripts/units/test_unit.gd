@@ -261,7 +261,7 @@ func _update_attack_target_state(delta: float) -> bool:
 
 
 func _get_preferred_firing_distance() -> float:
-	return maxf(definition.attack_range - ATTACK_APPROACH_MARGIN, 0.0)
+	return calculate_preferred_firing_distance(definition.attack_range)
 
 
 func _update_approach_destination_if_needed() -> void:
@@ -271,8 +271,10 @@ func _update_approach_destination_if_needed() -> void:
 		return
 
 	if (
-		_cached_target_position.distance_squared_to(_attack_target.global_position)
-		>= APPROACH_TARGET_REFRESH_DISTANCE_SQUARED
+		has_target_moved_for_approach(
+			_cached_target_position,
+			_attack_target.global_position
+		)
 		or _cached_attack_slot_index != slot_state.x
 		or _cached_attack_slot_count != slot_state.y
 	):
@@ -286,7 +288,7 @@ func _refresh_approach_destination(slot_state: Vector2i = Vector2i(-1, 0)) -> vo
 	_cached_target_position = _attack_target.global_position
 	_cached_attack_slot_index = slot_state.x
 	_cached_attack_slot_count = slot_state.y
-	var slot_angle := TAU * float(slot_state.x) / float(slot_state.y)
+	var slot_angle := calculate_attack_slot_angle(slot_state.x, slot_state.y)
 	var direction_from_target := Vector2.RIGHT.rotated(slot_angle)
 
 	_cached_approach_destination = _clamp_to_map_bounds(
@@ -465,13 +467,14 @@ func _get_footprint_half_extents() -> Vector2:
 		_report_footprint_fallback("CollisionShape2D has no assigned shape")
 		return Vector2.ZERO
 
-	var shape_scale := collision_shape.scale.abs()
-	if collision_shape.shape is RectangleShape2D:
-		var rectangle_shape := collision_shape.shape as RectangleShape2D
-		return rectangle_shape.size * 0.5 * shape_scale
-	if collision_shape.shape is CircleShape2D:
-		var circle_shape := collision_shape.shape as CircleShape2D
-		return Vector2.ONE * circle_shape.radius * shape_scale
+	if (
+		collision_shape.shape is RectangleShape2D
+		or collision_shape.shape is CircleShape2D
+	):
+		return calculate_footprint_half_extents(
+			collision_shape.shape,
+			collision_shape.scale
+		)
 
 	_report_footprint_fallback(
 		"CollisionShape2D uses unsupported shape type %s"
@@ -492,6 +495,43 @@ func _report_footprint_fallback(reason: String) -> void:
 		)
 		% [name, get_path(), reason]
 	)
+
+
+static func calculate_preferred_firing_distance(attack_range: float) -> float:
+	return maxf(attack_range - ATTACK_APPROACH_MARGIN, 0.0)
+
+
+static func has_target_moved_for_approach(
+	cached_position: Vector2,
+	current_position: Vector2
+) -> bool:
+	return (
+		cached_position.distance_squared_to(current_position)
+		>= APPROACH_TARGET_REFRESH_DISTANCE_SQUARED
+	)
+
+
+static func calculate_attack_slot_angle(slot_index: int, slot_count: int) -> float:
+	if slot_index < 0 or slot_count <= 0 or slot_index >= slot_count:
+		return 0.0
+	return TAU * float(slot_index) / float(slot_count)
+
+
+static func calculate_footprint_half_extents(
+	shape: Shape2D,
+	shape_scale: Vector2 = Vector2.ONE
+) -> Vector2:
+	if shape == null:
+		return Vector2.ZERO
+
+	var absolute_scale := shape_scale.abs()
+	if shape is RectangleShape2D:
+		var rectangle_shape := shape as RectangleShape2D
+		return rectangle_shape.size * 0.5 * absolute_scale
+	if shape is CircleShape2D:
+		var circle_shape := shape as CircleShape2D
+		return Vector2.ONE * circle_shape.radius * absolute_scale
+	return Vector2.ZERO
 
 
 func _clamp_axis(value: float, minimum: float, maximum: float) -> float:
