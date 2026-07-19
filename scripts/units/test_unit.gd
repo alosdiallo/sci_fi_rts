@@ -18,7 +18,7 @@ const MAX_SEPARATION_CONTRIBUTION := 0.35
 @onready var hit_indicator: Line2D = $HitIndicator
 @onready var health_bar: Control = $HealthBar
 @onready var health_fill: ColorRect = $HealthBar/Fill
-@onready var collision_shape: CollisionShape2D = $CollisionShape2D
+@onready var collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D") as CollisionShape2D
 
 var _is_selected := false
 var _movement_target := Vector2.ZERO
@@ -37,6 +37,7 @@ var _map_bounds := Rect2()
 var _has_map_bounds := false
 var _attack_cooldown_remaining := 0.0
 var _hit_feedback_remaining := 0.0
+var _footprint_warning_reported := false
 
 
 func _ready() -> void:
@@ -44,6 +45,7 @@ func _ready() -> void:
 	target_indicator.visible = false
 	hit_indicator.visible = false
 	health_bar.visible = false
+	_get_footprint_half_extents()
 	var validation_errors := _get_definition_validation_errors()
 	if validation_errors.is_empty():
 		_current_health = definition.max_health
@@ -295,7 +297,7 @@ func _refresh_approach_destination(slot_state: Vector2i = Vector2i(-1, 0)) -> vo
 
 func _get_attack_slot_state() -> Vector2i:
 	var attackers: Array[TestUnit] = []
-	for node: Node in get_tree().get_nodes_in_group(&"selectable_units"):
+	for node: Node in get_tree().get_nodes_in_group(&"test_units"):
 		var candidate := node as TestUnit
 		if (
 			candidate != null
@@ -376,7 +378,7 @@ func _calculate_friendly_separation() -> Vector2:
 		return Vector2.ZERO
 
 	var friendly_units: Array[TestUnit] = []
-	for node: Node in get_tree().get_nodes_in_group(&"selectable_units"):
+	for node: Node in get_tree().get_nodes_in_group(&"test_units"):
 		if (
 			node is TestUnit
 			and node != self
@@ -456,7 +458,11 @@ func _clamp_to_map_bounds(world_position: Vector2) -> Vector2:
 
 
 func _get_footprint_half_extents() -> Vector2:
-	if collision_shape == null or collision_shape.shape == null:
+	if collision_shape == null:
+		_report_footprint_fallback("CollisionShape2D is missing")
+		return Vector2.ZERO
+	if collision_shape.shape == null:
+		_report_footprint_fallback("CollisionShape2D has no assigned shape")
 		return Vector2.ZERO
 
 	var shape_scale := collision_shape.scale.abs()
@@ -467,7 +473,25 @@ func _get_footprint_half_extents() -> Vector2:
 		var circle_shape := collision_shape.shape as CircleShape2D
 		return Vector2.ONE * circle_shape.radius * shape_scale
 
+	_report_footprint_fallback(
+		"CollisionShape2D uses unsupported shape type %s"
+		% collision_shape.shape.get_class()
+	)
 	return Vector2.ZERO
+
+
+func _report_footprint_fallback(reason: String) -> void:
+	if _footprint_warning_reported:
+		return
+
+	_footprint_warning_reported = true
+	push_warning(
+		(
+			"%s at %s cannot derive a movement footprint because %s; "
+			+ "using center-only map clamping and no separation radius."
+		)
+		% [name, get_path(), reason]
+	)
 
 
 func _clamp_axis(value: float, minimum: float, maximum: float) -> float:
@@ -507,6 +531,8 @@ func _die() -> void:
 	hit_indicator.visible = false
 	velocity = Vector2.ZERO
 	remove_from_group(&"selectable_units")
-	collision_shape.set_deferred("disabled", true)
+	remove_from_group(&"test_units")
+	if collision_shape != null:
+		collision_shape.set_deferred("disabled", true)
 	set_physics_process(false)
 	queue_free()

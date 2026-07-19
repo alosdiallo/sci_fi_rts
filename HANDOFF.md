@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 is active and currently focuses on the generic unit, combat, approach, and spacing foundation.
+**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 review and cleanup is the active phase after completion of the generic unit, combat, approach, and spacing foundation.
 
 ## Confirmed
 
@@ -41,13 +41,15 @@
 - Approach and Spacing Slice 1 lets explicitly commanded units directly approach stationary hostile targets and stop 8 pixels inside their authored range before attacking.
 - Approach and Spacing Slice 2 caches moving-target approach destinations, refreshes them after 8 pixels of target movement, and keeps unit collision footprints inside the authoritative map bounds.
 - Approach and Spacing Slice 3 adds capped deterministic friendly-only separation during ground movement, attack approach, and severe idle overlap without changing physical collision behavior.
+- Approach and Spacing Slice 4 adds stable `NodePath`-ordered angular firing slots for living same-team attackers sharing an explicit hostile target.
+- Milestone 2 Cleanup Slice 1 separates simulation discovery into a neutral `test_units` group and adds one-time footprint-fallback diagnostics without invalidating affected units.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice, the first three combat prototype slices, and the first three approach-and-spacing slices are committed.
+Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing is complete. Slice 4 was manually accepted, committed, and pushed.
 
 ## Active work
 
-Approach and Spacing Slice 4 is present in the working tree but is not yet a completed checkpoint. It adds stable `NodePath`-ordered angular firing slots to living same-team units sharing an explicit hostile target, with local cache refresh when participation changes. It still requires manual interaction testing, final diff review, and a commit/push.
+Milestone 2 Cleanup Slice 1 is active in the working tree. Friendly separation and angular attack slots now discover living units through `test_units`; selection and contextual command eligibility remain on `selectable_units`. Missing, empty, or unsupported collision shapes retain center-only fallback and produce at most one identifying warning per unit lifecycle. Headless checks, manual interaction verification, final diff review, and commit/push remain required.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 
@@ -57,4 +59,4 @@ The Mars setting, Mars-only version-one mission scope, Free Settlements and Army
 
 ## Next-session rules
 
-Read `AGENTS.md`, `README.md`, `GAME_DESIGN.md`, `ROADMAP.md`, `DEVELOPMENT_PLAN.md`, `HANDOFF.md`, and `CHANGELOG.md` before changing the project. Preserve the distinction between confirmed, provisional, and unresolved material. Preserve the active uncommitted Slice 4 work. Do not edit `project.godot`, add dependencies, or expand beyond the approved technical slice unless the user explicitly asks. Keep planning status and `CHANGELOG.md` current for meaningful changes.
+Read `AGENTS.md`, `README.md`, `GAME_DESIGN.md`, `ROADMAP.md`, `DEVELOPMENT_PLAN.md`, `HANDOFF.md`, and `CHANGELOG.md` before changing the project. Preserve the distinction between confirmed, provisional, and unresolved material. Treat review recommendations as approval gates, not implementation authorization. Do not edit `project.godot`, add dependencies, or expand beyond the approved technical slice unless the user explicitly asks. Keep planning status and `CHANGELOG.md` current for meaningful changes.

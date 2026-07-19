@@ -23,6 +23,8 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Approach and Spacing Slice 3: capped deterministic friendly-unit separation during commanded movement, attack approach, and severe idle overlap.
 - Approach and Spacing Slice 4: stable `NodePath`-ordered angular approach slots for living same-team attackers sharing an explicit hostile target.
 - Development and implementation plan tracking milestone status, active work, dependencies, approval gates, next steps, and deferred scope.
+- Milestone 2 technical-foundation review covering responsibilities, refactor options, temporary visuals, validation, regression coverage, automated checks, main-scene continuity, and navigation readiness.
+- Milestone 2 Cleanup Slice 1: neutral `test_units` discovery for separation and attack slots, plus one-time diagnostics for center-only footprint fallback.
 
 ### Changed
 
@@ -38,3 +40,4 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Added validated `max_health` unit data and a temporary debugger-callable damage hook for health and death verification without attack controls.
 - Renamed the movement controller as a contextual unit-command controller while preserving ground movement and adding non-attacking hostile-target assignment.
 - Removed the temporary manual-damage hook after explicit target commands became capable of exercising health and death.
+- Recorded Approach and Spacing Slice 4 as manually accepted, committed, and pushed; Milestone 2C as complete; and Milestone 2 review and cleanup as the active phase.

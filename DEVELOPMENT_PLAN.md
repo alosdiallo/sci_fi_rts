@@ -27,9 +27,9 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Approach and Spacing Slice 4 — deterministic angular attack slots
-- **Last committed checkpoint:** Approach and Spacing Slice 3 — basic friendly-unit separation
-- **Current playable state:** one bounded technical test map with camera controls, four generic units, selection, movement, data-driven unit values, prototype teams, explicit targeting, direct approach, health, cooldown-based instant-hit combat, death cleanup, footprint-aware bounds, moving-target tracking, and basic friendly separation
+- **Active work:** Milestone 2 Cleanup Slice 1 — simulation discovery and footprint diagnostics
+- **Last committed checkpoint:** Approach and Spacing Slice 4 — deterministic angular attack slots
+- **Current playable state:** one bounded technical test map with camera controls, four generic units, selection, movement, data-driven unit values, prototype teams, explicit targeting, direct approach, health, cooldown-based instant-hit combat, death cleanup, footprint-aware bounds, moving-target tracking, friendly separation, and deterministic angular attack slots
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
 
 ## Milestone status
@@ -86,60 +86,22 @@ Status: **Complete**
 
 ### Milestone 2C — Approach and spacing
 
-Status: **Active**
-
-Completed and committed:
+Status: **Complete**
 
 - Slice 1: direct approach to explicit hostile targets.
 - Slice 2: thresholded moving-target tracking and footprint-aware map clamping.
 - Slice 3: capped, deterministic, friendly-only local separation.
-
-Active in the working tree:
-
 - Slice 4: stable angular firing slots for same-team attackers sharing one explicit target.
 
-Slice 4 is not complete until its interaction behavior is manually verified, the final diff is reviewed, and the change is committed and pushed.
+Slice 4 was manually accepted, committed, and pushed. Milestone 2C is complete.
 
-## Active work: Approach and Spacing Slice 4
+## Active work: Milestone 2 Cleanup Slice 1
 
-### Intended result
+The technical-foundation audit is recorded in `MILESTONE_2_REVIEW.md`. It reviews current responsibilities, refactor timing, temporary visuals, validation, regression coverage, automated checks, main-scene continuity, and navigation readiness.
 
-Multiple friendly units explicitly targeting the same hostile should approach distinct, deterministic points around that target instead of converging on one firing position.
+Cleanup Slice 1 is active in the working tree. It separates simulation-wide unit discovery from selection eligibility with a neutral `test_units` group and reports missing or unsupported footprint data once per affected unit while preserving center-only fallback behavior.
 
-### Implementation boundary
-
-Included:
-
-- Living same-team attackers sharing the same valid target.
-- Stable `NodePath` ordering.
-- Even angular distribution.
-- Per-attacker cached slot index and participant count.
-- Slot refresh when participation or target position changes.
-- Existing separation retained as a secondary stabilizer.
-
-Excluded:
-
-- Ground formations.
-- Persistent squads.
-- Tactical encirclement AI.
-- Navigation and obstacle routing.
-- Hostile physical blocking.
-- Attack-move and automatic targeting.
-
-### Completion checklist
-
-- [ ] One attacker uses a stable slot.
-- [ ] Two attackers use opposite slots.
-- [ ] Three and four attackers distribute evenly.
-- [ ] Slot assignment remains stable while the attacker set is unchanged.
-- [ ] Removing, killing, redirecting, or retargeting one attacker causes a stable recomputation.
-- [ ] Target movement refreshes slot destinations without visible jitter.
-- [ ] Friendly separation and combat cooldown behavior still work.
-- [ ] Camera, selection, ground movement, health, targeting, damage, and death regressions pass.
-- [ ] Godot Output and Debugger show no new warnings or errors.
-- [ ] `git diff --check` and Godot headless load/runtime checks pass.
-- [ ] Final diff contains only approved changes.
-- [ ] Changes are committed and pushed.
+The slice is not complete until headless checks pass, interaction behavior is manually verified, the final diff is reviewed, and the changes are committed and pushed.
 
 ## Next implementation sequence
 
@@ -147,7 +109,7 @@ The next phase should consolidate the technical prototype before adding broad co
 
 ### 1. Milestone 2 review and cleanup
 
-Status: **Planned**
+Status: **Active**
 
 Dependencies:
 
@@ -155,6 +117,7 @@ Dependencies:
 
 Work:
 
+- Complete and verify Cleanup Slice 1.
 - Run the full manual regression checklist.
 - Review warnings, node ownership, naming, and temporary debug visuals.
 - Remove or explicitly retain temporary prototype-only feedback.
@@ -414,4 +377,3 @@ After every meaningful implementation slice:
 4. Add a concise `CHANGELOG.md` entry.
 5. Commit and push only after manual verification where interaction matters.
 6. Keep `README.md` high-level; do not use it as the detailed project tracker.
-
