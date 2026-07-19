@@ -40,9 +40,10 @@
 - Combat Prototype Slice 3 adds validated damage, range, and cooldown data plus no-pursuit deterministic instant-hit attacks and brief temporary hit outlines.
 - Approach and Spacing Slice 1 lets explicitly commanded units directly approach stationary hostile targets and stop 8 pixels inside their authored range before attacking.
 - Approach and Spacing Slice 2 caches moving-target approach destinations, refreshes them after 8 pixels of target movement, and keeps unit collision footprints inside the authoritative map bounds.
+- Approach and Spacing Slice 3 adds capped deterministic friendly-only separation during ground movement, attack approach, and severe idle overlap without changing physical collision behavior.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice, the first three combat prototype slices, and the first two approach slices are implemented, pending manual interaction and inspector verification in the Godot editor. Multiple attackers may still overlap because separation and target slots remain deferred.
+Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice, the first three combat prototype slices, and the first three approach-and-spacing slices are implemented, pending manual interaction and inspector verification in the Godot editor. Separation reduces severe friendly overlap, but angular target slots and polished group movement remain deferred.
 
 ## Creative boundary
 

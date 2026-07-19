@@ -7,6 +7,8 @@ const APPROACH_TARGET_REFRESH_DISTANCE := 8.0
 const APPROACH_TARGET_REFRESH_DISTANCE_SQUARED := (
 	APPROACH_TARGET_REFRESH_DISTANCE * APPROACH_TARGET_REFRESH_DISTANCE
 )
+const SEPARATION_DEAD_ZONE := 0.5
+const MAX_SEPARATION_CONTRIBUTION := 0.35
 
 @export var definition: UnitDefinition
 @export var team_id: int = 0
@@ -70,7 +72,7 @@ func _physics_process(delta: float) -> void:
 	if _update_attack_target_state(delta):
 		return
 	if not _has_movement_target:
-		velocity = Vector2.ZERO
+		_move_with_separation(Vector2.ZERO)
 		return
 
 	_move_toward_ground_target(delta)
@@ -225,6 +227,14 @@ func _update_attack_target_state(delta: float) -> bool:
 
 	_is_approaching_attack_target = false
 	velocity = Vector2.ZERO
+	_move_with_separation(Vector2.ZERO)
+	distance_to_target_squared = global_position.distance_squared_to(
+		_attack_target.global_position
+	)
+	if distance_to_target_squared > attack_range_squared:
+		_attack_cooldown_remaining = definition.attack_cooldown
+		_is_approaching_attack_target = true
+		return true
 
 	_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - delta, 0.0)
 	if not is_zero_approx(_attack_cooldown_remaining):
@@ -282,9 +292,7 @@ func _move_toward_approach_destination(delta: float) -> bool:
 		_is_approaching_attack_target = false
 		return true
 
-	velocity = offset_to_destination / distance_to_destination * definition.movement_speed
-	move_and_slide()
-	global_position = _clamp_to_map_bounds(global_position)
+	_move_with_separation(offset_to_destination / distance_to_destination)
 	return false
 
 
@@ -302,9 +310,94 @@ func _move_toward_ground_target(delta: float) -> void:
 		_has_movement_target = false
 		return
 
-	velocity = offset_to_target / distance_to_target * definition.movement_speed
+	_move_with_separation(offset_to_target / distance_to_target)
+
+
+func _move_with_separation(command_direction: Vector2) -> bool:
+	var separation := _calculate_friendly_separation()
+	var movement_direction := Vector2.ZERO
+	var movement_speed_scale := 1.0
+
+	if not command_direction.is_zero_approx():
+		movement_direction = (command_direction.normalized() + separation).normalized()
+	elif not separation.is_zero_approx():
+		movement_direction = separation.normalized()
+		movement_speed_scale = separation.length()
+	else:
+		velocity = Vector2.ZERO
+		return false
+
+	velocity = movement_direction * definition.movement_speed * movement_speed_scale
 	move_and_slide()
 	global_position = _clamp_to_map_bounds(global_position)
+	return true
+
+
+func _calculate_friendly_separation() -> Vector2:
+	var own_radius := _get_separation_radius()
+	if own_radius <= 0.0:
+		return Vector2.ZERO
+
+	var friendly_units: Array[TestUnit] = []
+	for node: Node in get_tree().get_nodes_in_group(&"selectable_units"):
+		if (
+			node is TestUnit
+			and node != self
+			and is_instance_valid(node)
+			and node.is_inside_tree()
+			and node.is_alive()
+			and node.team_id == team_id
+		):
+			friendly_units.append(node)
+	friendly_units.sort_custom(_unit_path_precedes)
+
+	var separation := Vector2.ZERO
+	for friendly_unit in friendly_units:
+		var preferred_spacing := own_radius + friendly_unit._get_separation_radius()
+		if preferred_spacing <= 0.0:
+			continue
+
+		var offset_from_neighbor := global_position - friendly_unit.global_position
+		var distance_squared := offset_from_neighbor.length_squared()
+		var minimum_active_distance := maxf(
+			preferred_spacing - SEPARATION_DEAD_ZONE,
+			0.0
+		)
+		if distance_squared >= minimum_active_distance * minimum_active_distance:
+			continue
+
+		var direction_from_neighbor: Vector2
+		var distance_to_neighbor: float
+		if is_zero_approx(distance_squared):
+			direction_from_neighbor = _get_coincident_separation_direction(friendly_unit)
+			distance_to_neighbor = 0.0
+		else:
+			distance_to_neighbor = sqrt(distance_squared)
+			direction_from_neighbor = offset_from_neighbor / distance_to_neighbor
+
+		var spacing_deficit := preferred_spacing - distance_to_neighbor
+		if spacing_deficit <= SEPARATION_DEAD_ZONE:
+			continue
+		separation += direction_from_neighbor * spacing_deficit / preferred_spacing
+
+	return separation.limit_length(MAX_SEPARATION_CONTRIBUTION)
+
+
+func _get_separation_radius() -> float:
+	var footprint_half_extents := _get_footprint_half_extents()
+	return maxf(footprint_half_extents.x, footprint_half_extents.y)
+
+
+func _get_coincident_separation_direction(other: TestUnit) -> Vector2:
+	var path_comparison := String(get_path()).naturalnocasecmp_to(String(other.get_path()))
+	return Vector2.LEFT if path_comparison < 0 else Vector2.RIGHT
+
+
+func _unit_path_precedes(first: TestUnit, second: TestUnit) -> bool:
+	return (
+		String(first.get_path()).naturalnocasecmp_to(String(second.get_path()))
+		< 0
+	)
 
 
 func _set_map_bounds(map_bounds: Rect2) -> void:
