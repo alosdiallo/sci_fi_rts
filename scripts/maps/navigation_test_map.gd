@@ -133,6 +133,105 @@ func request_navigation(
 	)
 
 
+func request_firing_position(
+	start_world_position: Vector2,
+	target: TestUnit,
+	attack_range: float,
+	preferred_firing_distance: float,
+	slot_angle: float
+) -> NavigationPathResult:
+	var result := NavigationPathResult.new()
+	result.requested_start = start_world_position
+	if (
+		not is_instance_valid(target)
+		or not target.is_inside_tree()
+		or not target.is_alive()
+	):
+		result.status = NavigationPathResult.Status.INVALID_TARGET
+		return result
+
+	var target_position := target.global_position
+	var desired_position := (
+		target_position
+		+ Vector2.RIGHT.rotated(slot_angle) * preferred_firing_distance
+	)
+	result.requested_destination = desired_position
+	result.desired_firing_position = desired_position
+
+	var start_cell := world_to_grid(start_world_position)
+	if not is_cell_navigable(start_cell):
+		result.status = NavigationPathResult.Status.INVALID_START
+		return result
+
+	var target_cell := world_to_grid(target_position)
+	var desired_cell := world_to_grid(desired_position)
+	var preferred_path := _get_valid_firing_cell_path(
+		start_cell,
+		desired_cell,
+		target_cell,
+		target_position,
+		attack_range
+	)
+	if not preferred_path.is_empty():
+		return _complete_firing_success_result(
+			result,
+			NavigationPathResult.Status.PREFERRED_FIRING_POSITION,
+			desired_cell,
+			preferred_path
+		)
+
+	var search_radius_cells := ceili(attack_range / float(CELL_SIZE))
+	var candidates: Array[Dictionary] = []
+	for offset_y in range(-search_radius_cells, search_radius_cells + 1):
+		for offset_x in range(-search_radius_cells, search_radius_cells + 1):
+			var candidate_cell := target_cell + Vector2i(offset_x, offset_y)
+			if candidate_cell == desired_cell:
+				continue
+
+			var candidate_path := _get_valid_firing_cell_path(
+				start_cell,
+				candidate_cell,
+				target_cell,
+				target_position,
+				attack_range
+			)
+			if candidate_path.is_empty():
+				continue
+
+			var candidate_position := grid_to_world(candidate_cell)
+			var target_offset := candidate_position - target_position
+			var candidate_angle := target_offset.angle()
+			candidates.append(
+				{
+					"cell": candidate_cell,
+					"path": candidate_path,
+					"radial_deviation": absf(
+						target_offset.length() - preferred_firing_distance
+					),
+					"angular_deviation": absf(
+						wrapf(candidate_angle - slot_angle, -PI, PI)
+					),
+					"route_length": _calculate_cell_path_length(
+						start_world_position,
+						candidate_path
+					),
+				}
+			)
+
+	if candidates.is_empty():
+		result.status = NavigationPathResult.Status.NO_FIRING_POSITION
+		return result
+
+	candidates.sort_custom(_firing_candidate_precedes)
+	var best_candidate: Dictionary = candidates[0]
+	return _complete_firing_success_result(
+		result,
+		NavigationPathResult.Status.ALTERNATE_FIRING_POSITION,
+		best_candidate.cell,
+		best_candidate.path
+	)
+
+
 func request_grid_path(
 	start_world_position: Vector2,
 	destination_world_position: Vector2
@@ -142,6 +241,61 @@ func request_grid_path(
 	if not is_cell_navigable(start_cell) or not is_cell_navigable(destination_cell):
 		return []
 	return _astar_grid.get_id_path(start_cell, destination_cell)
+
+
+func _get_valid_firing_cell_path(
+	start_cell: Vector2i,
+	candidate_cell: Vector2i,
+	target_cell: Vector2i,
+	target_position: Vector2,
+	attack_range: float
+) -> Array[Vector2i]:
+	if candidate_cell == target_cell or not is_cell_navigable(candidate_cell):
+		return []
+
+	var candidate_position := grid_to_world(candidate_cell)
+	if candidate_position.distance_squared_to(target_position) > attack_range * attack_range:
+		return []
+
+	return _astar_grid.get_id_path(start_cell, candidate_cell)
+
+
+func _firing_candidate_precedes(first: Dictionary, second: Dictionary) -> bool:
+	# Reachability is filtered before sorting. Remaining candidates are ordered
+	# by radial deviation, angular deviation, route length, then row and column.
+	if not is_equal_approx(first.radial_deviation, second.radial_deviation):
+		return first.radial_deviation < second.radial_deviation
+	if not is_equal_approx(first.angular_deviation, second.angular_deviation):
+		return first.angular_deviation < second.angular_deviation
+	if not is_equal_approx(first.route_length, second.route_length):
+		return first.route_length < second.route_length
+	return _cell_precedes(first.cell, second.cell)
+
+
+func _calculate_cell_path_length(
+	start_world_position: Vector2,
+	cell_path: Array[Vector2i]
+) -> float:
+	var world_path := PackedVector2Array()
+	for index in range(1, cell_path.size()):
+		world_path.append(grid_to_world(cell_path[index]))
+	return calculate_world_path_length(start_world_position, world_path)
+
+
+func _complete_firing_success_result(
+	result: NavigationPathResult,
+	status: NavigationPathResult.Status,
+	destination_cell: Vector2i,
+	cell_path: Array[Vector2i]
+) -> NavigationPathResult:
+	_complete_success_result(result, status, destination_cell, cell_path)
+	if (
+		result.path.is_empty()
+		and not result.requested_start.is_equal_approx(result.accepted_destination)
+	):
+		result.raw_path.append(result.accepted_destination)
+		result.path.append(result.accepted_destination)
+	return result
 
 
 func simplify_world_path(

@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/maps/navigation_test_map.gd" id="1_navigation_map"]
 [ext_resource type="Script" path="res://scripts/camera/camera_controller.gd" id="2_camera"]
@@ -6,6 +6,7 @@
 [ext_resource type="Resource" path="res://data/units/test_unit_standard.tres" id="4_standard"]
 [ext_resource type="Script" path="res://scripts/selection/selection_controller.gd" id="5_selection"]
 [ext_resource type="Script" path="res://scripts/commands/navigation_command_controller.gd" id="6_navigation_command"]
+[ext_resource type="Resource" path="res://data/units/test_unit_fast.tres" id="7_fast"]
 
 [node name="NavigationTest" type="Node2D"]
 
@@ -20,10 +21,35 @@ test_map = NodePath("../NavigationTestMap")
 
 [node name="Units" type="Node2D" parent="."]
 
-[node name="TestUnit" parent="Units" instance=ExtResource("3_test_unit")]
+[node name="Attacker1" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(320, 1024)
 definition = ExtResource("4_standard")
 team_id = 1
+
+[node name="Attacker2" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(320, 1152)
+definition = ExtResource("4_standard")
+team_id = 1
+
+[node name="HostileInRange" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(512, 1024)
+definition = ExtResource("7_fast")
+team_id = 2
+
+[node name="HostileOpen" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(704, 1152)
+definition = ExtResource("7_fast")
+team_id = 2
+
+[node name="HostileBehindObstacle" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(1536, 1024)
+definition = ExtResource("7_fast")
+team_id = 2
+
+[node name="HostileEnclosed" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(1440, 416)
+definition = ExtResource("7_fast")
+team_id = 2
 
 [node name="SelectionInterface" type="CanvasLayer" parent="." node_paths=PackedStringArray("selection_rectangle")]
 script = ExtResource("5_selection")

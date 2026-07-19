@@ -2,6 +2,25 @@ class_name NavigationCommandController
 extends UnitCommandController
 
 
+func _issue_target_command(clicked_unit: TestUnit) -> void:
+	var navigation_map := test_map as NavigationTestMap
+	if navigation_map == null:
+		push_error("NavigationCommandController requires a NavigationTestMap reference.")
+		return
+
+	var map_bounds := navigation_map.get_map_bounds()
+	var issued_target_command := false
+	for unit in _get_selected_units():
+		if not unit.is_hostile_to(clicked_unit):
+			continue
+		navigation_map.configure_clearance_for_unit(unit)
+		unit.set_navigation_attack_target(clicked_unit, navigation_map, map_bounds)
+		issued_target_command = true
+
+	if issued_target_command:
+		navigation_map.clear_navigation_failure()
+
+
 func _issue_movement_command(world_position: Vector2) -> void:
 	var navigation_map := test_map as NavigationTestMap
 	if navigation_map == null:

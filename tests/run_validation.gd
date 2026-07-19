@@ -141,6 +141,26 @@ func _check_pure_calculations() -> void:
 		TestUnit.has_target_moved_for_approach(Vector2.ZERO, Vector2(8.0, 0.0)),
 		"movement at squared distance 64 did not request a refresh"
 	)
+	_expect_true(
+		"combat route ignores target movement below eight pixels",
+		not TestUnit.should_refresh_combat_navigation_route(
+			Vector2.ZERO,
+			Vector2(7.999, 0.0),
+			Vector2i(0, 1),
+			Vector2i(0, 1)
+		),
+		"combat route refreshed below squared-distance threshold 64"
+	)
+	_expect_true(
+		"combat route refreshes at eight pixels",
+		TestUnit.should_refresh_combat_navigation_route(
+			Vector2.ZERO,
+			Vector2(8.0, 0.0),
+			Vector2i(0, 1),
+			Vector2i(0, 1)
+		),
+		"combat route did not refresh at squared-distance threshold 64"
+	)
 
 	_expect_float("one-attacker slot angle", TestUnit.calculate_attack_slot_angle(0, 1), 0.0)
 	_expect_float("two-attacker first slot", TestUnit.calculate_attack_slot_angle(0, 2), 0.0)
@@ -518,6 +538,235 @@ func _check_navigation_grid() -> void:
 			"could not instantiate TestUnit route fixture"
 		)
 
+	var standard_definition := load(STANDARD_DEFINITION_PATH) as UnitDefinition
+	var fast_definition := load(FAST_DEFINITION_PATH) as UnitDefinition
+	var firing_attacker := _instantiate_unit(
+		"FiringAttacker",
+		standard_definition,
+		1
+	)
+	var failure_attacker := _instantiate_unit(
+		"FailureAttacker",
+		fast_definition,
+		1
+	)
+	var clear_target := _instantiate_unit("ClearFiringTarget", fast_definition, 2)
+	var blocked_slot_target := _instantiate_unit("BlockedSlotTarget", fast_definition, 2)
+	var enclosed_target := _instantiate_unit("EnclosedTarget", fast_definition, 2)
+	if (
+		firing_attacker != null
+		and failure_attacker != null
+		and clear_target != null
+		and blocked_slot_target != null
+		and enclosed_target != null
+	):
+		firing_attacker.global_position = Vector2(320.0, 800.0)
+		failure_attacker.global_position = Vector2(320.0, 416.0)
+		clear_target.global_position = Vector2(512.0, 800.0)
+		blocked_slot_target.global_position = Vector2(704.0, 1024.0)
+		enclosed_target.global_position = Vector2(1440.0, 416.0)
+
+		var preferred_distance := TestUnit.calculate_preferred_firing_distance(
+			standard_definition.attack_range
+		)
+		var preferred_firing_result := navigation_map.request_firing_position(
+			firing_attacker.global_position,
+			clear_target,
+			standard_definition.attack_range,
+			preferred_distance,
+			0.0
+		)
+		_expect_true(
+			"combat navigation accepts clear preferred angular slot",
+			preferred_firing_result.status
+			== NavigationPathResult.Status.PREFERRED_FIRING_POSITION
+			and preferred_firing_result.is_success(),
+			"clear preferred firing position was not accepted"
+		)
+		_expect_true(
+			"combat navigation never uses target center as destination",
+			not preferred_firing_result.accepted_destination.is_equal_approx(
+				clear_target.global_position
+			)
+			and navigation_map.world_to_grid(
+				preferred_firing_result.accepted_destination
+			) != navigation_map.world_to_grid(clear_target.global_position),
+			"target center was selected as the firing destination"
+		)
+
+		var alternate_firing_result := navigation_map.request_firing_position(
+			Vector2(320.0, 1024.0),
+			blocked_slot_target,
+			standard_definition.attack_range,
+			preferred_distance,
+			0.0
+		)
+		_expect_true(
+			"combat navigation resolves blocked preferred slot to alternate",
+			alternate_firing_result.status
+			== NavigationPathResult.Status.ALTERNATE_FIRING_POSITION
+			and alternate_firing_result.is_success(),
+			"blocked preferred slot did not produce a reachable alternate"
+		)
+		var alternate_target_distance := (
+			alternate_firing_result.accepted_destination.distance_to(
+				blocked_slot_target.global_position
+			)
+		)
+		_expect_true(
+			"combat navigation alternate remains inside attack range",
+			alternate_target_distance <= standard_definition.attack_range,
+			"alternate firing position exceeded authored attack range"
+		)
+		_expect_true(
+			"combat navigation favors preferred firing distance",
+			absf(alternate_target_distance - preferred_distance)
+			<= NavigationTestMap.CELL_SIZE,
+			"alternate was unnecessarily far from preferred firing distance"
+		)
+
+		var repeated_firing_result := navigation_map.request_firing_position(
+			Vector2(320.0, 1024.0),
+			blocked_slot_target,
+			standard_definition.attack_range,
+			preferred_distance,
+			0.0
+		)
+		_expect_true(
+			"combat navigation candidate selection is deterministic",
+			alternate_firing_result.accepted_destination.is_equal_approx(
+				repeated_firing_result.accepted_destination
+			)
+			and alternate_firing_result.path == repeated_firing_result.path,
+			"repeated firing-position query chose a different candidate"
+		)
+
+		var firing_path_is_valid := true
+		var firing_segment_start := Vector2(320.0, 1024.0)
+		for firing_waypoint in alternate_firing_result.path:
+			if not navigation_map.is_world_segment_navigable(
+				firing_segment_start,
+				firing_waypoint
+			):
+				firing_path_is_valid = false
+			firing_segment_start = firing_waypoint
+		_expect_true(
+			"combat navigation firing path preserves clearance",
+			firing_path_is_valid,
+			"firing route crossed blocked or clearance-invalid cells"
+		)
+
+		var enclosed_firing_result := navigation_map.request_firing_position(
+			Vector2(320.0, 416.0),
+			enclosed_target,
+			fast_definition.attack_range,
+			TestUnit.calculate_preferred_firing_distance(
+				fast_definition.attack_range
+			),
+			0.0
+		)
+		_expect_true(
+			"combat navigation enclosed target has no reachable firing position",
+			enclosed_firing_result.status
+			== NavigationPathResult.Status.NO_FIRING_POSITION
+			and not enclosed_firing_result.is_success(),
+			"enclosed target produced a route through its walls"
+		)
+
+		_expect_true(
+			"combat navigation slot change triggers route refresh",
+			TestUnit.should_refresh_combat_navigation_route(
+				Vector2.ZERO,
+				Vector2(7.0, 0.0),
+				Vector2i(0, 1),
+				Vector2i(1, 2)
+			),
+			"changed slot state did not trigger refresh below movement threshold"
+		)
+
+		firing_attacker.global_position = Vector2(320.0, 1024.0)
+		firing_attacker.set_navigation_attack_target(
+			blocked_slot_target,
+			navigation_map,
+			navigation_map.get_map_bounds()
+		)
+		_expect_true(
+			"combat navigation route state excludes ground route state",
+			firing_attacker.is_combat_route_active()
+			and not firing_attacker.is_ground_route_active(),
+			"combat and ground route states overlapped"
+		)
+		firing_attacker.set_movement_route(
+			direct_result.path,
+			navigation_map.get_map_bounds(),
+			route_destination,
+			direct_result.accepted_destination,
+			direct_result.status,
+			direct_result.raw_path
+		)
+		_expect_true(
+			"ground route replaces combat navigation state",
+			firing_attacker.is_ground_route_active()
+			and not firing_attacker.is_combat_route_active()
+			and not firing_attacker.has_valid_attack_target(),
+			"ground command left combat route or target state active"
+		)
+
+		failure_attacker.set_navigation_attack_target(
+			enclosed_target,
+			navigation_map,
+			navigation_map.get_map_bounds()
+		)
+		_expect_true(
+			"rejected combat route never falls back to direct movement",
+			failure_attacker.has_valid_attack_target()
+			and failure_attacker.has_combat_navigation_failure()
+			and failure_attacker.get_combat_navigation_failure_status()
+			== NavigationPathResult.Status.NO_FIRING_POSITION
+			and not failure_attacker.is_combat_route_active()
+			and not failure_attacker.is_ground_route_active(),
+			"failed combat navigation created movement or cleared explicit target"
+		)
+
+		firing_attacker.global_position = Vector2(320.0, 416.0)
+		firing_attacker.set_navigation_attack_target(
+			blocked_slot_target,
+			navigation_map,
+			navigation_map.get_map_bounds()
+		)
+		blocked_slot_target.take_damage(1000.0)
+		var dead_target_result := navigation_map.request_firing_position(
+			firing_attacker.global_position,
+			blocked_slot_target,
+			standard_definition.attack_range,
+			preferred_distance,
+			0.0
+		)
+		_expect_true(
+			"combat navigation rejects dead target explicitly",
+			dead_target_result.status == NavigationPathResult.Status.INVALID_TARGET,
+			"dead target did not return the invalid-target result"
+		)
+		firing_attacker._physics_process(0.0)
+		_expect_true(
+			"combat navigation target death clears route state",
+			not firing_attacker.has_valid_attack_target()
+			and not firing_attacker.is_combat_route_active()
+			and not firing_attacker.has_combat_navigation_failure(),
+			"dead target left combat route state active"
+		)
+	else:
+		_expect_true(
+			"combat navigation fixtures instantiate",
+			false,
+			"one or more firing-position fixtures could not be instantiated"
+		)
+
+	_free_if_valid(firing_attacker)
+	_free_if_valid(failure_attacker)
+	_free_if_valid(clear_target)
+	_free_if_valid(blocked_slot_target)
+	_free_if_valid(enclosed_target)
 	navigation_map.free()
 
 

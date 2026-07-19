@@ -28,6 +28,7 @@ var _raw_ground_waypoints := PackedVector2Array()
 var _ground_route_start := Vector2.ZERO
 var _ground_waypoint_index := 0
 var _is_following_ground_route := false
+var _is_combat_navigation_route := false
 var _last_navigation_result := NavigationPathResult.Status.NONE
 var _last_navigation_requested_destination := Vector2.ZERO
 var _accepted_navigation_destination := Vector2.ZERO
@@ -42,6 +43,13 @@ var _cached_approach_destination := Vector2.ZERO
 var _has_cached_approach_destination := false
 var _cached_attack_slot_index := -1
 var _cached_attack_slot_count := 0
+var _combat_navigation_map: NavigationTestMap
+var _has_combat_navigation_request := false
+var _combat_navigation_failed := false
+var _combat_navigation_failure_status := NavigationPathResult.Status.NONE
+var _combat_desired_firing_position := Vector2.ZERO
+var _combat_resolved_firing_position := Vector2.ZERO
+var _combat_used_alternate_firing_position := false
 var _map_bounds := Rect2()
 var _has_map_bounds := false
 var _attack_cooldown_remaining := 0.0
@@ -125,6 +133,25 @@ func set_movement_route(
 		return
 
 	clear_attack_target()
+	_assign_navigation_route(
+		waypoints,
+		raw_waypoints,
+		map_bounds,
+		false
+	)
+	_record_navigation_success(
+		result_status,
+		requested_destination,
+		accepted_destination
+	)
+
+
+func _assign_navigation_route(
+	waypoints: PackedVector2Array,
+	raw_waypoints: PackedVector2Array,
+	map_bounds: Rect2,
+	is_combat_route: bool
+) -> void:
 	_clear_ground_route()
 	_set_map_bounds(map_bounds)
 	_ground_waypoints = waypoints.duplicate()
@@ -134,13 +161,9 @@ func set_movement_route(
 		_ground_waypoints[index] = _clamp_to_map_bounds(_ground_waypoints[index])
 	_ground_waypoint_index = 0
 	_is_following_ground_route = true
+	_is_combat_navigation_route = is_combat_route
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
-	_record_navigation_success(
-		result_status,
-		requested_destination,
-		accepted_destination
-	)
 	queue_redraw()
 
 
@@ -186,7 +209,27 @@ func was_last_navigation_destination_projected() -> bool:
 
 
 func is_ground_route_active() -> bool:
-	return _is_following_ground_route
+	return _is_following_ground_route and not _is_combat_navigation_route
+
+
+func is_combat_route_active() -> bool:
+	return _is_following_ground_route and _is_combat_navigation_route
+
+
+func has_combat_navigation_failure() -> bool:
+	return _combat_navigation_failed
+
+
+func get_combat_navigation_failure_status() -> NavigationPathResult.Status:
+	return _combat_navigation_failure_status
+
+
+func get_combat_resolved_firing_position() -> Vector2:
+	return _combat_resolved_firing_position
+
+
+func used_alternate_combat_firing_position() -> bool:
+	return _combat_used_alternate_firing_position
 
 
 func _record_navigation_success(
@@ -204,32 +247,68 @@ func _record_navigation_success(
 
 
 func set_attack_target(target: TestUnit, map_bounds: Rect2 = Rect2()) -> void:
+	_assign_attack_target(target, map_bounds, null)
+
+
+func set_navigation_attack_target(
+	target: TestUnit,
+	navigation_map: NavigationTestMap,
+	map_bounds: Rect2 = Rect2()
+) -> void:
+	_assign_attack_target(target, map_bounds, navigation_map)
+
+
+func _assign_attack_target(
+	target: TestUnit,
+	map_bounds: Rect2,
+	navigation_map: NavigationTestMap
+) -> void:
 	if target == self or not is_hostile_to(target):
 		return
 
 	_clear_ground_route()
+	_clear_combat_navigation_state()
 	_set_map_bounds(map_bounds)
 	_clear_approach_cache()
 	_attack_target = target
+	_combat_navigation_map = navigation_map
 	_attack_cooldown_remaining = definition.attack_cooldown
-	_refresh_approach_destination()
+	if navigation_map == null:
+		_refresh_approach_destination()
 	_is_approaching_attack_target = (
 		global_position.distance_squared_to(target.global_position)
 		> definition.attack_range * definition.attack_range
 	)
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
+	_last_navigation_was_projected = false
 	velocity = Vector2.ZERO
 	_update_target_indicator()
+	if navigation_map != null and _is_approaching_attack_target:
+		_refresh_combat_navigation_route()
 
 
 func clear_attack_target() -> void:
+	_clear_combat_navigation_state()
 	_attack_target = null
 	_is_approaching_attack_target = false
 	_clear_approach_cache()
 	_attack_cooldown_remaining = 0.0
 	velocity = Vector2.ZERO
 	_update_target_indicator()
+
+
+func _clear_combat_navigation_state() -> void:
+	if _is_combat_navigation_route:
+		_clear_ground_route()
+	_combat_navigation_map = null
+	_has_combat_navigation_request = false
+	_combat_navigation_failed = false
+	_combat_navigation_failure_status = NavigationPathResult.Status.NONE
+	_combat_desired_firing_position = Vector2.ZERO
+	_combat_resolved_firing_position = Vector2.ZERO
+	_combat_used_alternate_firing_position = false
+	queue_redraw()
 
 
 func _clear_approach_cache() -> void:
@@ -318,6 +397,9 @@ func _update_attack_target_state(delta: float) -> bool:
 		clear_attack_target()
 		return false
 
+	if _combat_navigation_map != null:
+		return _update_navigation_attack_target_state(delta)
+
 	_update_target_indicator()
 	_update_approach_destination_if_needed()
 	var distance_to_target_squared := global_position.distance_squared_to(
@@ -363,6 +445,147 @@ func _update_attack_target_state(delta: float) -> bool:
 		return true
 	_attack_cooldown_remaining = definition.attack_cooldown
 	return true
+
+
+func _update_navigation_attack_target_state(delta: float) -> bool:
+	_update_target_indicator()
+	var distance_to_target_squared := global_position.distance_squared_to(
+		_attack_target.global_position
+	)
+	var attack_range_squared := definition.attack_range * definition.attack_range
+	if distance_to_target_squared > attack_range_squared:
+		_attack_cooldown_remaining = definition.attack_cooldown
+		if _should_refresh_combat_navigation_route():
+			_refresh_combat_navigation_route()
+
+		if _is_combat_navigation_route:
+			var route_completed := _move_toward_ground_route(delta)
+			if (
+				route_completed
+				and has_valid_attack_target()
+				and global_position.distance_squared_to(_attack_target.global_position)
+				> attack_range_squared
+			):
+				_refresh_combat_navigation_route()
+		else:
+			velocity = Vector2.ZERO
+		return true
+
+	if _is_combat_navigation_route:
+		_clear_ground_route()
+	velocity = Vector2.ZERO
+	_move_with_separation(Vector2.ZERO)
+	distance_to_target_squared = global_position.distance_squared_to(
+		_attack_target.global_position
+	)
+	if distance_to_target_squared > attack_range_squared:
+		_attack_cooldown_remaining = definition.attack_cooldown
+		return true
+
+	_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - delta, 0.0)
+	if not is_zero_approx(_attack_cooldown_remaining):
+		return true
+
+	var target := _attack_target
+	target.take_damage(definition.attack_damage)
+	if not target.is_alive():
+		clear_attack_target()
+		return true
+	_attack_cooldown_remaining = definition.attack_cooldown
+	return true
+
+
+func _should_refresh_combat_navigation_route() -> bool:
+	if not _has_combat_navigation_request:
+		return true
+
+	var slot_state := _get_attack_slot_state()
+	if should_refresh_combat_navigation_route(
+		_cached_target_position,
+		_attack_target.global_position,
+		Vector2i(_cached_attack_slot_index, _cached_attack_slot_count),
+		slot_state
+	):
+		return true
+
+	if (
+		not _combat_resolved_firing_position.is_zero_approx()
+		and not _combat_navigation_map.is_cell_navigable(
+			_combat_navigation_map.world_to_grid(_combat_resolved_firing_position)
+		)
+	):
+		return true
+
+	if (
+		_is_combat_navigation_route
+		and _ground_waypoint_index < _ground_waypoints.size()
+		and not _combat_navigation_map.is_world_segment_navigable(
+			global_position,
+			_ground_waypoints[_ground_waypoint_index]
+		)
+	):
+		return true
+
+	return false
+
+
+func _refresh_combat_navigation_route() -> void:
+	if _combat_navigation_map == null or not has_valid_attack_target():
+		return
+
+	var slot_state := _get_attack_slot_state()
+	var slot_angle := calculate_attack_slot_angle(slot_state.x, slot_state.y)
+	var result := _combat_navigation_map.request_firing_position(
+		global_position,
+		_attack_target,
+		definition.attack_range,
+		_get_preferred_firing_distance(),
+		slot_angle
+	)
+	_has_combat_navigation_request = true
+	_cached_target_position = _attack_target.global_position
+	_cached_attack_slot_index = slot_state.x
+	_cached_attack_slot_count = slot_state.y
+	_combat_desired_firing_position = result.desired_firing_position
+	_combat_resolved_firing_position = result.accepted_destination
+	_combat_used_alternate_firing_position = (
+		result.status == NavigationPathResult.Status.ALTERNATE_FIRING_POSITION
+	)
+
+	if not result.is_success():
+		_clear_ground_route()
+		_combat_navigation_failed = true
+		_combat_navigation_failure_status = result.status
+		velocity = Vector2.ZERO
+		print(
+			"Combat navigation rejected for %s at %s targeting %s: %s."
+			% [name, get_path(), _attack_target.get_path(), result.get_reason_text()]
+		)
+		queue_redraw()
+		return
+
+	_combat_navigation_failed = false
+	_combat_navigation_failure_status = NavigationPathResult.Status.NONE
+	_accepted_navigation_destination = result.accepted_destination
+	_assign_navigation_route(
+		result.path,
+		result.raw_path,
+		_combat_navigation_map.get_map_bounds(),
+		true
+	)
+	print(
+		(
+			"Combat navigation route for %s at %s: %s, raw %d waypoints, "
+			+ "simplified %d waypoints."
+		)
+		% [
+			name,
+			get_path(),
+			result.get_reason_text(),
+			result.raw_path.size(),
+			result.path.size(),
+		]
+	)
 
 
 func _get_preferred_firing_distance() -> float:
@@ -459,10 +682,10 @@ func _move_toward_ground_target(delta: float) -> void:
 	_move_with_separation(offset_to_target / distance_to_target)
 
 
-func _move_toward_ground_route(delta: float) -> void:
+func _move_toward_ground_route(delta: float) -> bool:
 	if not _is_following_ground_route:
 		_clear_ground_route()
-		return
+		return true
 
 	while _ground_waypoint_index < _ground_waypoints.size():
 		if (
@@ -476,7 +699,7 @@ func _move_toward_ground_route(delta: float) -> void:
 		global_position = _clamp_to_map_bounds(_accepted_navigation_destination)
 		velocity = Vector2.ZERO
 		_clear_ground_route()
-		return
+		return true
 
 	var waypoint := _ground_waypoints[_ground_waypoint_index]
 	var offset_to_waypoint := waypoint - global_position
@@ -492,7 +715,7 @@ func _move_toward_ground_route(delta: float) -> void:
 			_clear_ground_route()
 		else:
 			queue_redraw()
-		return
+		return _ground_waypoint_index >= _ground_waypoints.size()
 
 	var waypoint_speed := minf(
 		definition.movement_speed,
@@ -500,6 +723,7 @@ func _move_toward_ground_route(delta: float) -> void:
 	)
 	_move_with_separation(offset_to_waypoint / distance_to_waypoint, waypoint_speed)
 	queue_redraw()
+	return false
 
 
 func _clear_ground_route() -> void:
@@ -508,6 +732,7 @@ func _clear_ground_route() -> void:
 	_ground_route_start = Vector2.ZERO
 	_ground_waypoint_index = 0
 	_is_following_ground_route = false
+	_is_combat_navigation_route = false
 	queue_redraw()
 
 
@@ -676,6 +901,21 @@ static func has_target_moved_for_approach(
 	)
 
 
+static func should_refresh_combat_navigation_route(
+	cached_target_position: Vector2,
+	current_target_position: Vector2,
+	cached_slot_state: Vector2i,
+	current_slot_state: Vector2i
+) -> bool:
+	return (
+		has_target_moved_for_approach(
+			cached_target_position,
+			current_target_position
+		)
+		or cached_slot_state != current_slot_state
+	)
+
+
 static func calculate_attack_slot_angle(slot_index: int, slot_count: int) -> float:
 	if slot_index < 0 or slot_count <= 0 or slot_index >= slot_count:
 		return 0.0
@@ -713,19 +953,63 @@ func _draw() -> void:
 			for raw_waypoint in _raw_ground_waypoints:
 				raw_local_path.append(to_local(raw_waypoint))
 			if raw_local_path.size() >= 2:
-				draw_polyline(raw_local_path, Color(0.45, 0.52, 0.58, 0.7), 1.0)
+				var raw_color := (
+					Color(0.85, 0.3, 0.55, 0.65)
+					if _is_combat_navigation_route
+					else Color(0.45, 0.52, 0.58, 0.7)
+				)
+				draw_polyline(raw_local_path, raw_color, 1.0)
 
 		var local_path := PackedVector2Array([Vector2.ZERO])
 		for index in range(_ground_waypoint_index, _ground_waypoints.size()):
 			local_path.append(to_local(_ground_waypoints[index]))
 
 		if local_path.size() >= 2:
-			draw_polyline(local_path, Color("35d9ff"), 3.0)
+			var route_color := (
+				Color("ff5fa2")
+				if _is_combat_navigation_route
+				else Color("35d9ff")
+			)
+			draw_polyline(local_path, route_color, 3.0)
 
 		var active_waypoint := to_local(_ground_waypoints[_ground_waypoint_index])
 		var final_destination := to_local(_ground_waypoints[_ground_waypoints.size() - 1])
 		draw_circle(active_waypoint, 7.0, Color("ff9f43"))
 		draw_circle(final_destination, 10.0, Color("9b6cff"), false, 3.0)
+
+	if (
+		_combat_navigation_map != null
+		and _has_combat_navigation_request
+		and has_valid_attack_target()
+	):
+		var desired_position := to_local(_combat_desired_firing_position)
+		var resolved_position := to_local(_combat_resolved_firing_position)
+		draw_circle(desired_position, 9.0, Color("4dd8ff"), false, 2.0)
+		if not _combat_resolved_firing_position.is_zero_approx():
+			var resolved_color := (
+				Color("ffcf4d")
+				if _combat_used_alternate_firing_position
+				else Color("72f1a4")
+			)
+			draw_rect(
+				Rect2(resolved_position - Vector2.ONE * 7.0, Vector2.ONE * 14.0),
+				resolved_color,
+				false,
+				2.0
+			)
+		if _combat_navigation_failed:
+			draw_line(
+				desired_position - Vector2(10.0, 10.0),
+				desired_position + Vector2(10.0, 10.0),
+				Color("ff3b6b"),
+				3.0
+			)
+			draw_line(
+				desired_position + Vector2(10.0, -10.0),
+				desired_position + Vector2(-10.0, 10.0),
+				Color("ff3b6b"),
+				3.0
+			)
 
 	if _last_navigation_was_projected:
 		var raw_click := to_local(_last_navigation_requested_destination)
