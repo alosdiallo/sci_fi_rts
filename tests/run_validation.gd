@@ -233,11 +233,14 @@ func _check_navigation_grid() -> void:
 
 	var route_start := Vector2(320.0, 1024.0)
 	var route_destination := Vector2(1728.0, 1024.0)
+	var direct_result := navigation_map.request_navigation(route_start, route_destination)
 	var cell_path := navigation_map.request_grid_path(route_start, route_destination)
 	_expect_true(
-		"navigation detour path exists",
-		not cell_path.is_empty(),
-		"expected a path around the large obstacle"
+		"navigation valid direct destination accepted",
+		direct_result.status == NavigationPathResult.Status.DIRECT
+		and direct_result.is_success()
+		and not direct_result.path.is_empty(),
+		"expected a direct success result with a detour path"
 	)
 
 	var path_uses_only_navigable_cells := true
@@ -272,29 +275,161 @@ func _check_navigation_grid() -> void:
 		"diagonal step crossed a blocked orthogonal corner"
 	)
 
-	var near_obstacle_position := Vector2(840.0, 496.0)
+	var near_obstacle_position := Vector2(832.0, 488.0)
+	var projected_result := navigation_map.request_navigation(
+		route_start,
+		near_obstacle_position
+	)
+	var projected_cell := navigation_map.world_to_grid(
+		projected_result.accepted_destination
+	)
 	var requested_cell := navigation_map.world_to_grid(near_obstacle_position)
-	var projected_cell := navigation_map.project_destination(near_obstacle_position)
 	var projection_offset := projected_cell - requested_cell
 	_expect_true(
 		"navigation destination projects within three cells",
-		navigation_map.is_cell_navigable(projected_cell)
+		projected_result.status == NavigationPathResult.Status.PROJECTED
+		and navigation_map.is_cell_navigable(projected_cell)
 		and maxi(abs(projection_offset.x), abs(projection_offset.y))
 		<= NavigationTestMap.MAX_DESTINATION_PROJECTION_RADIUS,
 		"near-obstacle destination did not resolve within the bounded radius"
 	)
-
-	var enclosed_obstacle_position := NavigationTestMap.STATIC_OBSTACLE_BOUNDS.get_center()
 	_expect_vector2i(
-		"navigation projection fails beyond three cells",
-		navigation_map.project_destination(enclosed_obstacle_position),
-		Vector2i(-1, -1)
+		"navigation projection tie-breaking is stable",
+		projected_cell,
+		Vector2i(25, 14)
 	)
 	_expect_true(
-		"navigation path fails for unprojectable obstacle destination",
-		navigation_map.request_world_path(route_start, enclosed_obstacle_position).is_empty(),
-		"route was returned for a destination with no valid projection"
+		"navigation projected destination differs from raw click",
+		not projected_result.accepted_destination.is_equal_approx(
+			projected_result.requested_destination
+		),
+		"projected result implied that the raw blocked point was accepted"
 	)
+
+	var blocked_obstacle_position := NavigationTestMap.STATIC_OBSTACLE_BOUNDS.get_center()
+	var blocked_result := navigation_map.request_navigation(
+		route_start,
+		blocked_obstacle_position
+	)
+	_expect_true(
+		"navigation blocked destination beyond projection radius is rejected",
+		blocked_result.status == NavigationPathResult.Status.NO_VALID_DESTINATION
+		and not blocked_result.is_success(),
+		"deep obstacle destination returned the wrong failure reason"
+	)
+
+	var enclosed_destination := Vector2(1440.0, 416.0)
+	var enclosed_result := navigation_map.request_navigation(
+		route_start,
+		enclosed_destination
+	)
+	_expect_true(
+		"navigation enclosed destination is locally valid",
+		navigation_map.is_cell_navigable(
+			navigation_map.world_to_grid(enclosed_destination)
+		),
+		"enclosed fixture destination was not a valid cell"
+	)
+	_expect_true(
+		"navigation projection does not cross enclosing barrier",
+		enclosed_result.status == NavigationPathResult.Status.NO_PATH
+		and not enclosed_result.is_success(),
+		"enclosed destination was accepted or projected through its walls"
+	)
+	_expect_true(
+		"navigation valid but unreachable cell is rejected",
+		enclosed_result.get_reason_text() == "no reachable path to the destination",
+		"unreachable cell did not report the no-path reason"
+	)
+
+	var enclosed_blocked_result := navigation_map.request_navigation(
+		route_start,
+		Vector2(1440.0, 320.0)
+	)
+	_expect_true(
+		"navigation projected candidates require start reachability",
+		enclosed_blocked_result.status == NavigationPathResult.Status.NO_PATH
+		and not enclosed_blocked_result.is_success(),
+		"blocked enclosure wall projected through the enclosing barrier"
+	)
+
+	var invalid_start_result := navigation_map.request_navigation(
+		Vector2(-32.0, 1024.0),
+		route_destination
+	)
+	_expect_true(
+		"navigation invalid start is rejected",
+		invalid_start_result.status == NavigationPathResult.Status.INVALID_START
+		and not invalid_start_result.is_success(),
+		"invalid start returned the wrong result"
+	)
+
+	var same_cell_start := Vector2(320.0, 1024.0)
+	var same_cell_destination := Vector2(328.0, 1030.0)
+	var same_cell_result := navigation_map.request_navigation(
+		same_cell_start,
+		same_cell_destination
+	)
+	_expect_true(
+		"navigation same-cell command completes without route",
+		same_cell_result.status == NavigationPathResult.Status.DIRECT
+		and same_cell_result.is_success()
+		and same_cell_result.path.is_empty(),
+		"same-cell command did not return an immediate successful result"
+	)
+
+	var edge_result := navigation_map.request_navigation(
+		route_start,
+		Vector2(1968.0, 1968.0)
+	)
+	_expect_true(
+		"navigation footprint-valid map-edge destination succeeds",
+		edge_result.is_success(),
+		"valid near-edge destination was rejected"
+	)
+
+	var narrow_gap_cell := navigation_map.world_to_grid(Vector2(464.0, 1504.0))
+	_expect_true(
+		"navigation current footprint cannot enter narrow gap",
+		not navigation_map.is_cell_navigable(narrow_gap_cell),
+		"narrow fixture remained traversable for the current footprint"
+	)
+
+	var unit_scene := load(TEST_UNIT_SCENE_PATH) as PackedScene
+	var route_unit := unit_scene.instantiate() as TestUnit if unit_scene != null else null
+	if route_unit != null:
+		route_unit.definition = load(STANDARD_DEFINITION_PATH) as UnitDefinition
+		root.add_child(route_unit)
+		route_unit.set_physics_process(false)
+		route_unit.set_movement_route(
+			direct_result.path,
+			navigation_map.get_map_bounds(),
+			route_destination,
+			direct_result.accepted_destination,
+			direct_result.status
+		)
+		var accepted_before_failure := route_unit.get_accepted_navigation_destination()
+		route_unit.record_navigation_failure(
+			blocked_result.status,
+			blocked_obstacle_position
+		)
+		_expect_true(
+			"navigation rejected command preserves prior route state",
+			route_unit.is_ground_route_active()
+			and route_unit.get_accepted_navigation_destination().is_equal_approx(
+				accepted_before_failure
+			)
+			and route_unit.get_last_navigation_result()
+			== NavigationPathResult.Status.NO_VALID_DESTINATION,
+			"recording a rejected command mutated the active route"
+		)
+		route_unit.free()
+	else:
+		_expect_true(
+			"navigation rejected command preserves prior route state",
+			false,
+			"could not instantiate TestUnit route fixture"
+		)
 
 	navigation_map.free()
 

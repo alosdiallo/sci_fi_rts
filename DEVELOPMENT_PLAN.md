@@ -27,7 +27,7 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Navigation Slice 1 — one-unit static obstacle routing
+- **Active work:** Navigation Slice 2 — destination validity and unreachable handling
 - **Last committed checkpoint:** Approach and Spacing Slice 4 — deterministic angular attack slots
 - **Current playable state:** one bounded technical test map with camera controls, four generic units, selection, movement, data-driven unit values, prototype teams, explicit targeting, direct approach, health, cooldown-based instant-hit combat, death cleanup, footprint-aware bounds, moving-target tracking, friendly separation, and deterministic angular attack slots
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
@@ -117,9 +117,11 @@ Approved principle: the game will deliberately use modest on-screen unit counts 
 
 Navigation priorities are correctness and reliability, route quality, congestion/deadlock handling, responsive replanning, and only then performance optimization.
 
-## Active implementation: Navigation Slice 1
+## Active implementation: Navigation Slice 2
 
-Navigation Slice 1 is active in the working tree. It adds a separately run geometric arena at `scenes/main/navigation_test.tscn`, a map-owned clearance-aware 32-pixel `AStarGrid2D`, one-unit ground-route commands, per-unit waypoint following, and temporary path/grid diagnostics.
+Navigation Slice 1 established the separately run geometric arena at `scenes/main/navigation_test.tscn`, its map-owned clearance-aware 32-pixel `AStarGrid2D`, one-unit ground routes, per-unit waypoint following, and temporary path/grid diagnostics.
+
+Navigation Slice 2 expands that arena with enclosed, dead-end, narrow-clearance, obstacle, and map-edge destination cases. Navigation requests now return an explicit typed result distinguishing direct success, bounded reachable projection, invalid destination, unreachable path, and invalid start. Rejected commands retain the unit's existing route and combat target, while temporary geometric markers and one concise diagnostic identify the failure reason.
 
 Combat approach remains direct and the configured project main scene is unchanged. Group navigation, smoothing, recovery, replanning, and dynamic obstacles remain deferred.
 
@@ -168,7 +170,7 @@ Exit criteria:
 
 ### 2. Spatial scale and navigation requirements
 
-Status: **Active — Slice 1 implementation**
+Status: **Active — Slice 2 implementation**
 
 Dependencies:
 

@@ -26,6 +26,10 @@ var _has_movement_target := false
 var _ground_waypoints := PackedVector2Array()
 var _ground_waypoint_index := 0
 var _is_following_ground_route := false
+var _last_navigation_result := NavigationPathResult.Status.NONE
+var _last_navigation_requested_destination := Vector2.ZERO
+var _accepted_navigation_destination := Vector2.ZERO
+var _last_navigation_was_projected := false
 var _current_health := 0.0
 var _is_alive := false
 var _health_initialized := false
@@ -109,7 +113,10 @@ func set_movement_target(target: Vector2, map_bounds: Rect2 = Rect2()) -> void:
 
 func set_movement_route(
 	waypoints: PackedVector2Array,
-	map_bounds: Rect2 = Rect2()
+	map_bounds: Rect2 = Rect2(),
+	requested_destination: Vector2 = Vector2.ZERO,
+	accepted_destination: Vector2 = Vector2.ZERO,
+	result_status: NavigationPathResult.Status = NavigationPathResult.Status.DIRECT
 ) -> void:
 	if waypoints.is_empty():
 		return
@@ -124,6 +131,70 @@ func set_movement_route(
 	_is_following_ground_route = true
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
+	_record_navigation_success(
+		result_status,
+		requested_destination,
+		accepted_destination
+	)
+	queue_redraw()
+
+
+func complete_navigation_command(
+	requested_destination: Vector2,
+	accepted_destination: Vector2,
+	result_status: NavigationPathResult.Status,
+	map_bounds: Rect2 = Rect2()
+) -> void:
+	clear_attack_target()
+	_clear_ground_route()
+	_set_map_bounds(map_bounds)
+	_has_movement_target = false
+	_movement_target = Vector2.ZERO
+	velocity = Vector2.ZERO
+	_record_navigation_success(
+		result_status,
+		requested_destination,
+		accepted_destination
+	)
+
+
+func record_navigation_failure(
+	result_status: NavigationPathResult.Status,
+	requested_destination: Vector2
+) -> void:
+	_last_navigation_result = result_status
+	_last_navigation_requested_destination = requested_destination
+	_last_navigation_was_projected = false
+	queue_redraw()
+
+
+func get_last_navigation_result() -> NavigationPathResult.Status:
+	return _last_navigation_result
+
+
+func get_accepted_navigation_destination() -> Vector2:
+	return _accepted_navigation_destination
+
+
+func was_last_navigation_destination_projected() -> bool:
+	return _last_navigation_was_projected
+
+
+func is_ground_route_active() -> bool:
+	return _is_following_ground_route
+
+
+func _record_navigation_success(
+	result_status: NavigationPathResult.Status,
+	requested_destination: Vector2,
+	accepted_destination: Vector2
+) -> void:
+	_last_navigation_result = result_status
+	_last_navigation_requested_destination = requested_destination
+	_accepted_navigation_destination = accepted_destination
+	_last_navigation_was_projected = (
+		result_status == NavigationPathResult.Status.PROJECTED
+	)
 	queue_redraw()
 
 
@@ -605,20 +676,28 @@ func get_footprint_half_extents() -> Vector2:
 
 
 func _draw() -> void:
-	if not _is_selected or not _is_following_ground_route:
+	if not _is_selected:
 		return
 
-	var local_path := PackedVector2Array([Vector2.ZERO])
-	for index in range(_ground_waypoint_index, _ground_waypoints.size()):
-		local_path.append(to_local(_ground_waypoints[index]))
+	if _is_following_ground_route:
+		var local_path := PackedVector2Array([Vector2.ZERO])
+		for index in range(_ground_waypoint_index, _ground_waypoints.size()):
+			local_path.append(to_local(_ground_waypoints[index]))
 
-	if local_path.size() >= 2:
-		draw_polyline(local_path, Color("35d9ff"), 3.0)
+		if local_path.size() >= 2:
+			draw_polyline(local_path, Color("35d9ff"), 3.0)
 
-	var active_waypoint := to_local(_ground_waypoints[_ground_waypoint_index])
-	var final_destination := to_local(_ground_waypoints[_ground_waypoints.size() - 1])
-	draw_circle(active_waypoint, 7.0, Color("ff9f43"))
-	draw_circle(final_destination, 10.0, Color("9b6cff"), false, 3.0)
+		var active_waypoint := to_local(_ground_waypoints[_ground_waypoint_index])
+		var final_destination := to_local(_ground_waypoints[_ground_waypoints.size() - 1])
+		draw_circle(active_waypoint, 7.0, Color("ff9f43"))
+		draw_circle(final_destination, 10.0, Color("9b6cff"), false, 3.0)
+
+	if _last_navigation_was_projected:
+		var raw_click := to_local(_last_navigation_requested_destination)
+		var accepted_destination := to_local(_accepted_navigation_destination)
+		draw_dashed_line(raw_click, accepted_destination, Color("f7d154"), 2.0, 6.0)
+		draw_circle(raw_click, 7.0, Color("f7d154"), false, 2.0)
+		draw_circle(accepted_destination, 7.0, Color("56e39f"), false, 2.0)
 
 
 func _clamp_axis(value: float, minimum: float, maximum: float) -> float:
