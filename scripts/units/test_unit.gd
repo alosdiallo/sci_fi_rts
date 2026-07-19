@@ -23,6 +23,9 @@ const MAX_SEPARATION_CONTRIBUTION := 0.35
 var _is_selected := false
 var _movement_target := Vector2.ZERO
 var _has_movement_target := false
+var _ground_waypoints := PackedVector2Array()
+var _ground_waypoint_index := 0
+var _is_following_ground_route := false
 var _current_health := 0.0
 var _is_alive := false
 var _health_initialized := false
@@ -75,6 +78,9 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if _update_attack_target_state(delta):
 		return
+	if _is_following_ground_route:
+		_move_toward_ground_route(delta)
+		return
 	if not _has_movement_target:
 		_move_with_separation(Vector2.ZERO)
 		return
@@ -86,6 +92,7 @@ func set_selected(selected: bool) -> void:
 	_is_selected = selected
 	selection_indicator.visible = selected
 	_update_target_indicator()
+	queue_redraw()
 
 
 func is_selected() -> bool:
@@ -94,15 +101,37 @@ func is_selected() -> bool:
 
 func set_movement_target(target: Vector2, map_bounds: Rect2 = Rect2()) -> void:
 	clear_attack_target()
+	_clear_ground_route()
 	_set_map_bounds(map_bounds)
 	_movement_target = _clamp_to_map_bounds(target)
 	_has_movement_target = true
+
+
+func set_movement_route(
+	waypoints: PackedVector2Array,
+	map_bounds: Rect2 = Rect2()
+) -> void:
+	if waypoints.is_empty():
+		return
+
+	clear_attack_target()
+	_clear_ground_route()
+	_set_map_bounds(map_bounds)
+	_ground_waypoints = waypoints.duplicate()
+	for index in range(_ground_waypoints.size()):
+		_ground_waypoints[index] = _clamp_to_map_bounds(_ground_waypoints[index])
+	_ground_waypoint_index = 0
+	_is_following_ground_route = true
+	_has_movement_target = false
+	_movement_target = Vector2.ZERO
+	queue_redraw()
 
 
 func set_attack_target(target: TestUnit, map_bounds: Rect2 = Rect2()) -> void:
 	if target == self or not is_hostile_to(target):
 		return
 
+	_clear_ground_route()
 	_set_map_bounds(map_bounds)
 	_clear_approach_cache()
 	_attack_target = target
@@ -354,6 +383,43 @@ func _move_toward_ground_target(delta: float) -> void:
 	_move_with_separation(offset_to_target / distance_to_target)
 
 
+func _move_toward_ground_route(delta: float) -> void:
+	if (
+		not _is_following_ground_route
+		or _ground_waypoint_index >= _ground_waypoints.size()
+	):
+		_clear_ground_route()
+		return
+
+	var waypoint := _ground_waypoints[_ground_waypoint_index]
+	var offset_to_waypoint := waypoint - global_position
+	var distance_to_waypoint := offset_to_waypoint.length()
+	var maximum_step := definition.movement_speed * delta
+
+	if (
+		distance_to_waypoint <= definition.arrival_tolerance
+		or distance_to_waypoint <= maximum_step
+	):
+		global_position = _clamp_to_map_bounds(waypoint)
+		velocity = Vector2.ZERO
+		_ground_waypoint_index += 1
+		if _ground_waypoint_index >= _ground_waypoints.size():
+			_clear_ground_route()
+		else:
+			queue_redraw()
+		return
+
+	_move_with_separation(offset_to_waypoint / distance_to_waypoint)
+	queue_redraw()
+
+
+func _clear_ground_route() -> void:
+	_ground_waypoints = PackedVector2Array()
+	_ground_waypoint_index = 0
+	_is_following_ground_route = false
+	queue_redraw()
+
+
 func _move_with_separation(command_direction: Vector2) -> bool:
 	var separation := _calculate_friendly_separation()
 	var movement_direction := Vector2.ZERO
@@ -534,6 +600,27 @@ static func calculate_footprint_half_extents(
 	return Vector2.ZERO
 
 
+func get_footprint_half_extents() -> Vector2:
+	return _get_footprint_half_extents()
+
+
+func _draw() -> void:
+	if not _is_selected or not _is_following_ground_route:
+		return
+
+	var local_path := PackedVector2Array([Vector2.ZERO])
+	for index in range(_ground_waypoint_index, _ground_waypoints.size()):
+		local_path.append(to_local(_ground_waypoints[index]))
+
+	if local_path.size() >= 2:
+		draw_polyline(local_path, Color("35d9ff"), 3.0)
+
+	var active_waypoint := to_local(_ground_waypoints[_ground_waypoint_index])
+	var final_destination := to_local(_ground_waypoints[_ground_waypoints.size() - 1])
+	draw_circle(active_waypoint, 7.0, Color("ff9f43"))
+	draw_circle(final_destination, 10.0, Color("9b6cff"), false, 3.0)
+
+
 func _clamp_axis(value: float, minimum: float, maximum: float) -> float:
 	if minimum > maximum:
 		return (minimum + maximum) * 0.5
@@ -564,6 +651,7 @@ func _die() -> void:
 	_is_alive = false
 	_is_selected = false
 	selection_indicator.visible = false
+	_clear_ground_route()
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
 	clear_attack_target()

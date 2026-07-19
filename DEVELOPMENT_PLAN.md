@@ -27,7 +27,7 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Milestone 2 Cleanup Slice 2 — native headless validation
+- **Active work:** Navigation Slice 1 — one-unit static obstacle routing
 - **Last committed checkpoint:** Approach and Spacing Slice 4 — deterministic angular attack slots
 - **Current playable state:** one bounded technical test map with camera controls, four generic units, selection, movement, data-driven unit values, prototype teams, explicit targeting, direct approach, health, cooldown-based instant-hit combat, death cleanup, footprint-aware bounds, moving-target tracking, friendly separation, and deterministic angular attack slots
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
@@ -109,6 +109,32 @@ godot --headless --path . --script res://tests/run_validation.gd
 
 The cleanup phase remains active until the full manual interaction regression passes, the final diff is reviewed, and the changes are committed and pushed.
 
+## Active planning: Navigation architecture
+
+`NAVIGATION_ARCHITECTURE_PLAN.md` is the active planning document for obstacle routing, destination validity, group movement, congestion, stuck recovery, replanning, combat approach, test fixtures, and quality metrics. It does not authorize navigation implementation.
+
+Approved principle: the game will deliberately use modest on-screen unit counts so navigation, group movement, recovery, and tactical AI can prioritize quality over maximum throughput. Higher CPU cost is acceptable when it produces meaningfully better behavior; optimization must not prematurely weaken route quality, reliability, or recovery.
+
+Navigation priorities are correctness and reliability, route quality, congestion/deadlock handling, responsive replanning, and only then performance optimization.
+
+## Active implementation: Navigation Slice 1
+
+Navigation Slice 1 is active in the working tree. It adds a separately run geometric arena at `scenes/main/navigation_test.tscn`, a map-owned clearance-aware 32-pixel `AStarGrid2D`, one-unit ground-route commands, per-unit waypoint following, and temporary path/grid diagnostics.
+
+Combat approach remains direct and the configured project main scene is unchanged. Group navigation, smoothing, recovery, replanning, and dynamic obstacles remain deferred.
+
+Manual launch:
+
+```bash
+godot --path . --editor scenes/main/navigation_test.tscn
+```
+
+Headless scene check:
+
+```bash
+godot --headless --path . --scene res://scenes/main/navigation_test.tscn --quit-after 10
+```
+
 ## Next implementation sequence
 
 The next phase should consolidate the technical prototype before adding broad content.
@@ -142,7 +168,7 @@ Exit criteria:
 
 ### 2. Spatial scale and navigation requirements
 
-Status: **Planned**
+Status: **Active — Slice 1 implementation**
 
 Dependencies:
 
@@ -150,6 +176,7 @@ Dependencies:
 
 Work:
 
+- Review and approve or revise `NAVIGATION_ARCHITECTURE_PLAN.md`.
 - Define provisional world scale for infantry squads, buggies, rovers, drones, buildings, weapon ranges, and camera framing.
 - Build a repeatable combat/navigation test arena with open ground and simple obstacles.
 - Document required movement behavior around static obstacles and narrow spaces.

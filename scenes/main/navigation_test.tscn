@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/maps/navigation_test_map.gd" id="1_navigation_map"]
+[ext_resource type="Script" path="res://scripts/camera/camera_controller.gd" id="2_camera"]
+[ext_resource type="PackedScene" path="res://scenes/units/test_unit.tscn" id="3_test_unit"]
+[ext_resource type="Resource" path="res://data/units/test_unit_standard.tres" id="4_standard"]
+[ext_resource type="Script" path="res://scripts/selection/selection_controller.gd" id="5_selection"]
+[ext_resource type="Script" path="res://scripts/commands/navigation_command_controller.gd" id="6_navigation_command"]
+
+[node name="NavigationTest" type="Node2D"]
+
+[node name="NavigationTestMap" type="Node2D" parent="."]
+script = ExtResource("1_navigation_map")
+
+[node name="Camera2D" type="Camera2D" parent="." node_paths=PackedStringArray("test_map")]
+position = Vector2(1024, 1024)
+position_smoothing_enabled = false
+script = ExtResource("2_camera")
+test_map = NodePath("../NavigationTestMap")
+
+[node name="Units" type="Node2D" parent="."]
+
+[node name="TestUnit" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(320, 1024)
+definition = ExtResource("4_standard")
+team_id = 1
+
+[node name="SelectionInterface" type="CanvasLayer" parent="." node_paths=PackedStringArray("selection_rectangle")]
+script = ExtResource("5_selection")
+selection_rectangle = NodePath("SelectionRectangle")
+
+[node name="SelectionRectangle" type="ColorRect" parent="SelectionInterface"]
+visible = false
+mouse_filter = 2
+color = Color(0.2, 0.75, 1, 0.25)
+
+[node name="NavigationCommandController" type="Node" parent="." node_paths=PackedStringArray("test_map")]
+script = ExtResource("6_navigation_command")
+test_map = NodePath("../NavigationTestMap")

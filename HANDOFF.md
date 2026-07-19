@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 review and cleanup is the active phase after completion of the generic unit, combat, approach, and spacing foundation.
+**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 cleanup still awaits full manual regression, while navigation architecture planning is now active.
 
 ## Confirmed
 
@@ -44,13 +44,18 @@
 - Approach and Spacing Slice 4 adds stable `NodePath`-ordered angular firing slots for living same-team attackers sharing an explicit hostile target.
 - Milestone 2 Cleanup Slice 1 separates simulation discovery into a neutral `test_units` group and adds one-time footprint-fallback diagnostics without invalidating affected units.
 - Milestone 2 Cleanup Slice 2 adds a native headless GDScript runner covering definition validation, health and damage, hostility and targeting, footprint calculations, firing distance, target refresh, and angular slot angles.
+- Navigation Slice 1 adds a separately run geometric arena with a map-owned clearance-aware 32-pixel `AStarGrid2D`, static obstacle detours, bounded destination projection, one-unit waypoint following, and temporary route/grid diagnostics.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
 Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing is complete. Slice 4 was manually accepted, committed, and pushed.
 
 ## Active work
 
-Milestone 2 Cleanup Slice 2 is active in the working tree. Run it with `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd` on the current development machine, or replace the executable path with `godot` where it is available on `PATH`. Pointer behavior, camera feel, visual feedback, separation stability, and end-to-end slot movement remain manual. Final manual regression, diff review, and commit/push remain required before cleanup is complete.
+Navigation Slice 1 is active in the working tree. Open `scenes/main/navigation_test.tscn` manually to exercise one-unit static obstacle routing. The existing configured main scene remains unchanged, and combat approach still uses direct movement.
+
+Approved principle: modest on-screen unit counts permit navigation, group movement, recovery, and tactical AI to prioritize correctness and behavior quality over maximum throughput. Optimize only after route reliability, quality, congestion/deadlock handling, and replanning are sound.
+
+The native validation runner now includes deterministic grid conversion, obstacle clearance, detour, blocked-cell, diagonal-corner, and bounded-projection checks. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

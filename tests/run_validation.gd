@@ -16,6 +16,7 @@ func _run_validation() -> void:
 	_check_unit_definition_validation()
 	_check_pure_calculations()
 	_check_footprint_calculations()
+	_check_navigation_grid()
 	_check_health_damage_hostility_and_targeting()
 
 	if OS.get_cmdline_user_args().has("--force-failure"):
@@ -193,6 +194,109 @@ func _check_footprint_calculations() -> void:
 		TestUnit.calculate_footprint_half_extents(CapsuleShape2D.new()),
 		Vector2.ZERO
 	)
+
+
+func _check_navigation_grid() -> void:
+	var navigation_map := NavigationTestMap.new()
+	navigation_map.name = "ValidationNavigationMap"
+	root.add_child(navigation_map)
+
+	_expect_vector2i(
+		"navigation world-to-grid conversion",
+		navigation_map.world_to_grid(Vector2(48.0, 80.0)),
+		Vector2i(1, 2)
+	)
+	_expect_vector(
+		"navigation grid-to-world conversion",
+		navigation_map.grid_to_world(Vector2i(1, 2)),
+		Vector2(48.0, 80.0)
+	)
+
+	var obstacle_center_cell := navigation_map.world_to_grid(
+		NavigationTestMap.STATIC_OBSTACLE_BOUNDS.get_center()
+	)
+	_expect_true(
+		"navigation static obstacle is blocked",
+		not navigation_map.is_cell_navigable(obstacle_center_cell),
+		"obstacle center cell was navigable"
+	)
+
+	var clearance_cell := navigation_map.world_to_grid(Vector2(816.0, 496.0))
+	_expect_true(
+		"navigation obstacle clearance is blocked",
+		not NavigationTestMap.STATIC_OBSTACLE_BOUNDS.has_point(
+			navigation_map.grid_to_world(clearance_cell)
+		)
+		and not navigation_map.is_cell_navigable(clearance_cell),
+		"cell outside raw obstacle but inside footprint clearance was navigable"
+	)
+
+	var route_start := Vector2(320.0, 1024.0)
+	var route_destination := Vector2(1728.0, 1024.0)
+	var cell_path := navigation_map.request_grid_path(route_start, route_destination)
+	_expect_true(
+		"navigation detour path exists",
+		not cell_path.is_empty(),
+		"expected a path around the large obstacle"
+	)
+
+	var path_uses_only_navigable_cells := true
+	var path_respects_diagonal_corners := true
+	for index in range(cell_path.size()):
+		var cell := cell_path[index]
+		if not navigation_map.is_cell_navigable(cell):
+			path_uses_only_navigable_cells = false
+		if index == 0:
+			continue
+		var previous_cell := cell_path[index - 1]
+		var step := cell - previous_cell
+		if abs(step.x) == 1 and abs(step.y) == 1:
+			if (
+				not navigation_map.is_cell_navigable(
+					previous_cell + Vector2i(step.x, 0)
+				)
+				or not navigation_map.is_cell_navigable(
+					previous_cell + Vector2i(0, step.y)
+				)
+			):
+				path_respects_diagonal_corners = false
+
+	_expect_true(
+		"navigation path excludes blocked cells",
+		path_uses_only_navigable_cells,
+		"path crossed a blocked or clearance cell"
+	)
+	_expect_true(
+		"navigation diagonal corner cutting is prohibited",
+		path_respects_diagonal_corners,
+		"diagonal step crossed a blocked orthogonal corner"
+	)
+
+	var near_obstacle_position := Vector2(840.0, 496.0)
+	var requested_cell := navigation_map.world_to_grid(near_obstacle_position)
+	var projected_cell := navigation_map.project_destination(near_obstacle_position)
+	var projection_offset := projected_cell - requested_cell
+	_expect_true(
+		"navigation destination projects within three cells",
+		navigation_map.is_cell_navigable(projected_cell)
+		and maxi(abs(projection_offset.x), abs(projection_offset.y))
+		<= NavigationTestMap.MAX_DESTINATION_PROJECTION_RADIUS,
+		"near-obstacle destination did not resolve within the bounded radius"
+	)
+
+	var enclosed_obstacle_position := NavigationTestMap.STATIC_OBSTACLE_BOUNDS.get_center()
+	_expect_vector2i(
+		"navigation projection fails beyond three cells",
+		navigation_map.project_destination(enclosed_obstacle_position),
+		Vector2i(-1, -1)
+	)
+	_expect_true(
+		"navigation path fails for unprojectable obstacle destination",
+		navigation_map.request_world_path(route_start, enclosed_obstacle_position).is_empty(),
+		"route was returned for a destination with no valid projection"
+	)
+
+	navigation_map.free()
 
 
 func _check_health_damage_hostility_and_targeting() -> void:
@@ -383,6 +487,18 @@ func _expect_vector(
 	_expect_true(
 		check_name,
 		actual.is_equal_approx(expected) or actual.distance_to(expected) <= tolerance,
+		"expected %s, got %s" % [expected, actual]
+	)
+
+
+func _expect_vector2i(
+	check_name: String,
+	actual: Vector2i,
+	expected: Vector2i
+) -> void:
+	_expect_true(
+		check_name,
+		actual == expected,
 		"expected %s, got %s" % [expected, actual]
 	)
 

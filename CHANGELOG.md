@@ -26,6 +26,8 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Milestone 2 technical-foundation review covering responsibilities, refactor options, temporary visuals, validation, regression coverage, automated checks, main-scene continuity, and navigation readiness.
 - Milestone 2 Cleanup Slice 1: neutral `test_units` discovery for separation and attack slots, plus one-time diagnostics for center-only footprint fallback.
 - Milestone 2 Cleanup Slice 2: a native Godot headless validation runner for stable definition, health, targeting, footprint, approach-threshold, and angular-slot logic.
+- Navigation architecture plan covering a clearance-aware grid recommendation, route quality, group movement, stuck recovery, replanning, unreachable commands, combat routing, test fixtures, metrics, and staged approval gates.
+- Navigation Slice 1: a dedicated geometric arena, map-owned clearance-aware 32-pixel `AStarGrid2D`, static-obstacle detours, bounded destination projection, one-unit waypoint following, temporary route diagnostics, and deterministic headless checks.
 
 ### Changed
 
@@ -42,3 +44,4 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Renamed the movement controller as a contextual unit-command controller while preserving ground movement and adding non-attacking hostile-target assignment.
 - Removed the temporary manual-damage hook after explicit target commands became capable of exercising health and death.
 - Recorded Approach and Spacing Slice 4 as manually accepted, committed, and pushed; Milestone 2C as complete; and Milestone 2 review and cleanup as the active phase.
+- Established navigation planning as active and approved quality-over-throughput for deliberately modest unit counts, with correctness, route quality, deadlock handling, and responsive replanning prioritized before optimization.
