@@ -46,17 +46,18 @@
 - Milestone 2 Cleanup Slice 2 adds a native headless GDScript runner covering definition validation, health and damage, hostility and targeting, footprint calculations, firing distance, target refresh, and angular slot angles.
 - Navigation Slice 1 adds a separately run geometric arena with a map-owned clearance-aware 32-pixel `AStarGrid2D`, static obstacle detours, bounded destination projection, one-unit waypoint following, and temporary route/grid diagnostics.
 - Navigation Slice 2 adds explicit typed navigation results, reachability-aware bounded projection, deterministic command rejection that preserves prior state, expanded destination fixtures, and reason-specific temporary feedback.
+- Navigation Slice 3 adds deterministic line-of-sight waypoint reduction, conservative supercover-style segment validation, smoother intermediate-waypoint transitions, raw-versus-simplified path drawing, and per-command route metrics.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
 Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing is complete. Slice 4 was manually accepted, committed, and pushed.
 
 ## Active work
 
-Navigation Slice 2 is active in the working tree. Open `scenes/main/navigation_test.tscn` manually to exercise direct destinations, reachable projection, enclosed and blocked failures, same-cell completion, map-edge validity, and preservation of an active route after rejection. The existing configured main scene remains unchanged, and combat approach still uses direct movement.
+Navigation Slice 3 is active in the working tree. Open `scenes/main/navigation_test.tscn` manually to compare muted raw grid paths with bright simplified movement paths, verify clean waypoint transitions, and regress direct destinations, reachable projection, enclosed and blocked failures, same-cell completion, map-edge validity, and active-route preservation after rejection. The existing configured main scene remains unchanged, and combat approach still uses direct movement.
 
 Approved principle: modest on-screen unit counts permit navigation, group movement, recovery, and tactical AI to prioritize correctness and behavior quality over maximum throughput. Optimize only after route reliability, quality, congestion/deadlock handling, and replanning are sound.
 
-The native validation runner now includes deterministic grid conversion, obstacle clearance, detours, blocked cells, diagonal corners, result reasons, projection tie-breaking and reachability, invalid starts, same-cell commands, map-edge validity, narrow-clearance rejection, and failed-command state preservation. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
+The native validation runner now also covers straight-route reduction, necessary detour retention, simplified-segment clearance, a tricky blocked-corner shortcut, exact destinations, deterministic repeated simplification, waypoint-count and route-length quality, and projected endpoints. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

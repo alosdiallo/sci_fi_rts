@@ -144,6 +144,149 @@ func request_grid_path(
 	return _astar_grid.get_id_path(start_cell, destination_cell)
 
 
+func simplify_world_path(
+	start_world_position: Vector2,
+	raw_waypoints: PackedVector2Array
+) -> PackedVector2Array:
+	if raw_waypoints.is_empty():
+		return PackedVector2Array()
+
+	var simplified := PackedVector2Array()
+	var retained_position := start_world_position
+	var next_candidate_index := 0
+	while next_candidate_index < raw_waypoints.size():
+		var furthest_visible_index := next_candidate_index
+		for candidate_index in range(
+			raw_waypoints.size() - 1,
+			next_candidate_index - 1,
+			-1
+		):
+			if is_world_segment_navigable(
+				retained_position,
+				raw_waypoints[candidate_index]
+			):
+				furthest_visible_index = candidate_index
+				break
+
+		var retained_waypoint := raw_waypoints[furthest_visible_index]
+		simplified.append(retained_waypoint)
+		retained_position = retained_waypoint
+		next_candidate_index = furthest_visible_index + 1
+
+	return simplified
+
+
+func is_world_segment_navigable(start_world: Vector2, end_world: Vector2) -> bool:
+	var current_cell := world_to_grid(start_world)
+	var end_cell := world_to_grid(end_world)
+	var direction := end_world - start_world
+	var boundary_neighbor_x := -1
+	var boundary_neighbor_y := -1
+	var local_start := start_world - MAP_BOUNDS.position
+	if (
+		is_zero_approx(direction.x)
+		and is_zero_approx(fposmod(local_start.x, float(CELL_SIZE)))
+	):
+		boundary_neighbor_x = current_cell.x - 1
+	if (
+		is_zero_approx(direction.y)
+		and is_zero_approx(fposmod(local_start.y, float(CELL_SIZE)))
+	):
+		boundary_neighbor_y = current_cell.y - 1
+
+	if not _is_segment_cell_clear(
+		current_cell,
+		boundary_neighbor_x,
+		boundary_neighbor_y
+	):
+		return false
+	if current_cell == end_cell:
+		return true
+
+	var step_x := signi(direction.x)
+	var step_y := signi(direction.y)
+	var t_delta_x := INF if step_x == 0 else float(CELL_SIZE) / absf(direction.x)
+	var t_delta_y := INF if step_y == 0 else float(CELL_SIZE) / absf(direction.y)
+	var next_boundary_x := (
+		MAP_BOUNDS.position.x
+		+ float(current_cell.x + (1 if step_x > 0 else 0)) * CELL_SIZE
+	)
+	var next_boundary_y := (
+		MAP_BOUNDS.position.y
+		+ float(current_cell.y + (1 if step_y > 0 else 0)) * CELL_SIZE
+	)
+	var t_max_x := (
+		INF
+		if step_x == 0
+		else (next_boundary_x - start_world.x) / direction.x
+	)
+	var t_max_y := (
+		INF
+		if step_y == 0
+		else (next_boundary_y - start_world.y) / direction.y
+	)
+
+	while current_cell != end_cell:
+		if is_equal_approx(t_max_x, t_max_y):
+			var horizontal_neighbor := current_cell + Vector2i(step_x, 0)
+			var vertical_neighbor := current_cell + Vector2i(0, step_y)
+			if (
+				not is_cell_navigable(horizontal_neighbor)
+				or not is_cell_navigable(vertical_neighbor)
+			):
+				return false
+			current_cell += Vector2i(step_x, step_y)
+			t_max_x += t_delta_x
+			t_max_y += t_delta_y
+		elif t_max_x < t_max_y:
+			current_cell.x += step_x
+			t_max_x += t_delta_x
+		else:
+			current_cell.y += step_y
+			t_max_y += t_delta_y
+
+		if not _is_segment_cell_clear(
+			current_cell,
+			boundary_neighbor_x,
+			boundary_neighbor_y
+		):
+			return false
+
+	return true
+
+
+func _is_segment_cell_clear(
+	cell: Vector2i,
+	boundary_neighbor_x: int,
+	boundary_neighbor_y: int
+) -> bool:
+	if not is_cell_navigable(cell):
+		return false
+	if (
+		boundary_neighbor_x >= 0
+		and not is_cell_navigable(Vector2i(boundary_neighbor_x, cell.y))
+	):
+		return false
+	if (
+		boundary_neighbor_y >= 0
+		and not is_cell_navigable(Vector2i(cell.x, boundary_neighbor_y))
+	):
+		return false
+	return true
+
+
+static func calculate_world_path_length(
+	start_world_position: Vector2,
+	waypoints: PackedVector2Array
+) -> float:
+	var total_length := 0.0
+	var previous_position := start_world_position
+	for waypoint in waypoints:
+		total_length += previous_position.distance_to(waypoint)
+		previous_position = waypoint
+	return total_length
+
+
 func show_navigation_failure(result: NavigationPathResult) -> void:
 	_last_failure_result = result
 	queue_redraw()
@@ -205,7 +348,8 @@ func _complete_success_result(
 		return result
 
 	for index in range(1, cell_path.size()):
-		result.path.append(grid_to_world(cell_path[index]))
+		result.raw_path.append(grid_to_world(cell_path[index]))
+	result.path = simplify_world_path(result.requested_start, result.raw_path)
 	return result
 
 

@@ -29,6 +29,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Navigation architecture plan covering a clearance-aware grid recommendation, route quality, group movement, stuck recovery, replanning, unreachable commands, combat routing, test fixtures, metrics, and staged approval gates.
 - Navigation Slice 1: a dedicated geometric arena, map-owned clearance-aware 32-pixel `AStarGrid2D`, static-obstacle detours, bounded destination projection, one-unit waypoint following, temporary route diagnostics, and deterministic headless checks.
 - Navigation Slice 2: expanded geometric destination fixtures, typed direct/projected/rejected results, reachability-aware three-cell projection, state-preserving command failures, reason-specific debug feedback, and deterministic validation coverage.
+- Navigation Slice 3: deterministic clearance-safe waypoint simplification, conservative corner-aware segment traversal, smoother waypoint transitions, raw-versus-simplified route debugging, route-quality metrics, and validation coverage.
 
 ### Changed
 

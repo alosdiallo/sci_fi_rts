@@ -14,6 +14,7 @@ var status: Status = Status.NONE
 var requested_start := Vector2.ZERO
 var requested_destination := Vector2.ZERO
 var accepted_destination := Vector2.ZERO
+var raw_path := PackedVector2Array()
 var path := PackedVector2Array()
 
 

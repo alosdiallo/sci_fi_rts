@@ -24,6 +24,8 @@ var _is_selected := false
 var _movement_target := Vector2.ZERO
 var _has_movement_target := false
 var _ground_waypoints := PackedVector2Array()
+var _raw_ground_waypoints := PackedVector2Array()
+var _ground_route_start := Vector2.ZERO
 var _ground_waypoint_index := 0
 var _is_following_ground_route := false
 var _last_navigation_result := NavigationPathResult.Status.NONE
@@ -116,7 +118,8 @@ func set_movement_route(
 	map_bounds: Rect2 = Rect2(),
 	requested_destination: Vector2 = Vector2.ZERO,
 	accepted_destination: Vector2 = Vector2.ZERO,
-	result_status: NavigationPathResult.Status = NavigationPathResult.Status.DIRECT
+	result_status: NavigationPathResult.Status = NavigationPathResult.Status.DIRECT,
+	raw_waypoints: PackedVector2Array = PackedVector2Array()
 ) -> void:
 	if waypoints.is_empty():
 		return
@@ -125,6 +128,8 @@ func set_movement_route(
 	_clear_ground_route()
 	_set_map_bounds(map_bounds)
 	_ground_waypoints = waypoints.duplicate()
+	_raw_ground_waypoints = raw_waypoints.duplicate()
+	_ground_route_start = global_position
 	for index in range(_ground_waypoints.size()):
 		_ground_waypoints[index] = _clamp_to_map_bounds(_ground_waypoints[index])
 	_ground_waypoint_index = 0
@@ -455,10 +460,21 @@ func _move_toward_ground_target(delta: float) -> void:
 
 
 func _move_toward_ground_route(delta: float) -> void:
-	if (
-		not _is_following_ground_route
-		or _ground_waypoint_index >= _ground_waypoints.size()
-	):
+	if not _is_following_ground_route:
+		_clear_ground_route()
+		return
+
+	while _ground_waypoint_index < _ground_waypoints.size():
+		if (
+			global_position.distance_to(_ground_waypoints[_ground_waypoint_index])
+			> definition.arrival_tolerance
+		):
+			break
+		_ground_waypoint_index += 1
+
+	if _ground_waypoint_index >= _ground_waypoints.size():
+		global_position = _clamp_to_map_bounds(_accepted_navigation_destination)
+		velocity = Vector2.ZERO
 		_clear_ground_route()
 		return
 
@@ -467,31 +483,38 @@ func _move_toward_ground_route(delta: float) -> void:
 	var distance_to_waypoint := offset_to_waypoint.length()
 	var maximum_step := definition.movement_speed * delta
 
-	if (
-		distance_to_waypoint <= definition.arrival_tolerance
-		or distance_to_waypoint <= maximum_step
-	):
+	if distance_to_waypoint <= maximum_step:
 		global_position = _clamp_to_map_bounds(waypoint)
 		velocity = Vector2.ZERO
 		_ground_waypoint_index += 1
 		if _ground_waypoint_index >= _ground_waypoints.size():
+			global_position = _clamp_to_map_bounds(_accepted_navigation_destination)
 			_clear_ground_route()
 		else:
 			queue_redraw()
 		return
 
-	_move_with_separation(offset_to_waypoint / distance_to_waypoint)
+	var waypoint_speed := minf(
+		definition.movement_speed,
+		distance_to_waypoint / maxf(delta, 0.000001)
+	)
+	_move_with_separation(offset_to_waypoint / distance_to_waypoint, waypoint_speed)
 	queue_redraw()
 
 
 func _clear_ground_route() -> void:
 	_ground_waypoints = PackedVector2Array()
+	_raw_ground_waypoints = PackedVector2Array()
+	_ground_route_start = Vector2.ZERO
 	_ground_waypoint_index = 0
 	_is_following_ground_route = false
 	queue_redraw()
 
 
-func _move_with_separation(command_direction: Vector2) -> bool:
+func _move_with_separation(
+	command_direction: Vector2,
+	maximum_speed: float = -1.0
+) -> bool:
 	var separation := _calculate_friendly_separation()
 	var movement_direction := Vector2.ZERO
 	var movement_speed_scale := 1.0
@@ -505,7 +528,12 @@ func _move_with_separation(command_direction: Vector2) -> bool:
 		velocity = Vector2.ZERO
 		return false
 
-	velocity = movement_direction * definition.movement_speed * movement_speed_scale
+	var movement_speed := (
+		definition.movement_speed
+		if maximum_speed < 0.0
+		else minf(maximum_speed, definition.movement_speed)
+	)
+	velocity = movement_direction * movement_speed * movement_speed_scale
 	move_and_slide()
 	global_position = _clamp_to_map_bounds(global_position)
 	return true
@@ -680,6 +708,13 @@ func _draw() -> void:
 		return
 
 	if _is_following_ground_route:
+		if not _raw_ground_waypoints.is_empty():
+			var raw_local_path := PackedVector2Array([to_local(_ground_route_start)])
+			for raw_waypoint in _raw_ground_waypoints:
+				raw_local_path.append(to_local(raw_waypoint))
+			if raw_local_path.size() >= 2:
+				draw_polyline(raw_local_path, Color(0.45, 0.52, 0.58, 0.7), 1.0)
+
 		var local_path := PackedVector2Array([Vector2.ZERO])
 		for index in range(_ground_waypoint_index, _ground_waypoints.size()):
 			local_path.append(to_local(_ground_waypoints[index]))

@@ -38,8 +38,30 @@ func _issue_movement_command(world_position: Vector2) -> void:
 				navigation_map.get_map_bounds(),
 				world_position,
 				result.accepted_destination,
-				result.status
+				result.status,
+				result.raw_path
 			)
+		print(
+			(
+				"Navigation route for %s at %s: %s, raw %d waypoints / %.1f px, "
+				+ "simplified %d waypoints / %.1f px."
+			)
+			% [
+				unit.name,
+				unit.get_path(),
+				result.get_reason_text(),
+				result.raw_path.size(),
+				NavigationTestMap.calculate_world_path_length(
+					unit.global_position,
+					result.raw_path
+				),
+				result.path.size(),
+				NavigationTestMap.calculate_world_path_length(
+					unit.global_position,
+					result.path
+				),
+			]
+		)
 		issued_route = true
 
 	if issued_route:

@@ -275,6 +275,85 @@ func _check_navigation_grid() -> void:
 		"diagonal step crossed a blocked orthogonal corner"
 	)
 
+	var open_result := navigation_map.request_navigation(
+		Vector2(320.0, 1024.0),
+		Vector2(704.0, 1024.0)
+	)
+	_expect_true(
+		"navigation straight path simplifies to one movement endpoint",
+		open_result.raw_path.size() > 1
+		and open_result.path.size() == 1
+		and open_result.path[0].is_equal_approx(open_result.accepted_destination),
+		"open route did not simplify to its destination"
+	)
+	_expect_true(
+		"navigation obstacle detour retains turning waypoints",
+		direct_result.raw_path.size() > direct_result.path.size()
+		and direct_result.path.size() >= 2,
+		"obstacle route did not retain a necessary detour"
+	)
+
+	var simplified_segments_are_valid := true
+	var simplified_segment_start := route_start
+	for simplified_waypoint in direct_result.path:
+		if not navigation_map.is_world_segment_navigable(
+			simplified_segment_start,
+			simplified_waypoint
+		):
+			simplified_segments_are_valid = false
+		simplified_segment_start = simplified_waypoint
+	_expect_true(
+		"navigation simplified segments preserve clearance",
+		simplified_segments_are_valid,
+		"simplified detour crossed blocked or clearance-invalid cells"
+	)
+	_expect_true(
+		"navigation near-corner shortcut is rejected",
+		not navigation_map.is_world_segment_navigable(
+			Vector2(784.0, 528.0),
+			Vector2(848.0, 464.0)
+		),
+		"near-corner segment was allowed through blocked clearance cells"
+	)
+	_expect_true(
+		"navigation simplified destination is exact",
+		not direct_result.path.is_empty()
+		and direct_result.path[direct_result.path.size() - 1].is_equal_approx(
+			direct_result.accepted_destination
+		),
+		"simplification changed the accepted destination"
+	)
+
+	var repeated_direct_result := navigation_map.request_navigation(
+		route_start,
+		route_destination
+	)
+	_expect_true(
+		"navigation simplification is deterministic",
+		direct_result.raw_path == repeated_direct_result.raw_path
+		and direct_result.path == repeated_direct_result.path,
+		"repeated query produced different raw or simplified paths"
+	)
+	_expect_true(
+		"navigation simplification never adds waypoints",
+		direct_result.path.size() <= direct_result.raw_path.size(),
+		"simplified route contains more waypoints than its raw route"
+	)
+
+	var raw_route_length := NavigationTestMap.calculate_world_path_length(
+		route_start,
+		direct_result.raw_path
+	)
+	var simplified_route_length := NavigationTestMap.calculate_world_path_length(
+		route_start,
+		direct_result.path
+	)
+	_expect_true(
+		"navigation simplified route is not longer than raw route",
+		simplified_route_length <= raw_route_length + 0.001,
+		"simplified route length exceeded the raw route length"
+	)
+
 	var near_obstacle_position := Vector2(832.0, 488.0)
 	var projected_result := navigation_map.request_navigation(
 		route_start,
@@ -304,6 +383,14 @@ func _check_navigation_grid() -> void:
 			projected_result.requested_destination
 		),
 		"projected result implied that the raw blocked point was accepted"
+	)
+	_expect_true(
+		"navigation projected destination remains final simplified waypoint",
+		not projected_result.path.is_empty()
+		and projected_result.path[projected_result.path.size() - 1].is_equal_approx(
+			projected_result.accepted_destination
+		),
+		"projected destination was changed or omitted by simplification"
 	)
 
 	var blocked_obstacle_position := NavigationTestMap.STATIC_OBSTACLE_BOUNDS.get_center()
