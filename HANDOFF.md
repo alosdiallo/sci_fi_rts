@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early-stage Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. The project remains in pre-production. Milestone 1 is implemented, and the first Milestone 2 slice adds typed, data-driven definitions for the generic placeholder units.
+**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 is active and currently focuses on the generic unit, combat, approach, and spacing foundation.
 
 ## Confirmed
 
@@ -43,7 +43,13 @@
 - Approach and Spacing Slice 3 adds capped deterministic friendly-only separation during ground movement, attack approach, and severe idle overlap without changing physical collision behavior.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
-Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice, the first three combat prototype slices, and the first three approach-and-spacing slices are implemented, pending manual interaction and inspector verification in the Godot editor. Separation reduces severe friendly overlap, but angular target slots and polished group movement remain deferred.
+Milestone 1 remains technically complete. The first Milestone 2 data-driven unit-definition slice, the first three combat prototype slices, and the first three approach-and-spacing slices are committed.
+
+## Active work
+
+Approach and Spacing Slice 4 is present in the working tree but is not yet a completed checkpoint. It adds stable `NodePath`-ordered angular firing slots to living same-team units sharing an explicit hostile target, with local cache refresh when participation changes. It still requires manual interaction testing, final diff review, and a commit/push.
+
+See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 
 ## Creative boundary
 
@@ -51,4 +57,4 @@ The Mars setting, Mars-only version-one mission scope, Free Settlements and Army
 
 ## Next-session rules
 
-Read `AGENTS.md`, `README.md`, `GAME_DESIGN.md`, `ROADMAP.md`, `HANDOFF.md`, `CHANGELOG.md`, and `MILESTONE_1_PLAN.md` before changing the project. Preserve the distinction between confirmed, provisional, and unresolved material. Do not edit `project.godot`, add dependencies, or expand beyond the approved technical slice unless the user explicitly asks. Keep `CHANGELOG.md` current for meaningful changes.
+Read `AGENTS.md`, `README.md`, `GAME_DESIGN.md`, `ROADMAP.md`, `DEVELOPMENT_PLAN.md`, `HANDOFF.md`, and `CHANGELOG.md` before changing the project. Preserve the distinction between confirmed, provisional, and unresolved material. Preserve the active uncommitted Slice 4 work. Do not edit `project.godot`, add dependencies, or expand beyond the approved technical slice unless the user explicitly asks. Keep planning status and `CHANGELOG.md` current for meaningful changes.

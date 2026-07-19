@@ -9,8 +9,9 @@ Before making changes, read:
 1. `README.md`
 2. `GAME_DESIGN.md`
 3. `ROADMAP.md`
-4. `HANDOFF.md`
-5. `CHANGELOG.md`
+4. `DEVELOPMENT_PLAN.md`
+5. `HANDOFF.md`
+6. `CHANGELOG.md`
 
 Inspect the repository and current working tree before editing. Existing user changes must be preserved.
 
@@ -37,6 +38,7 @@ Inspect the repository and current working tree before editing. Existing user ch
 ## Change discipline
 
 - Match work to the active milestone and the user's request.
+- Keep `DEVELOPMENT_PLAN.md` accurate when milestone status, dependencies, approval gates, or implementation sequencing changes.
 - Before making unrelated or scope-expanding changes, show the proposed changes and obtain approval.
 - Do not add third-party dependencies, addons, or generated assets without explicit approval.
 - Do not edit `project.godot` unless the user explicitly authorizes it.

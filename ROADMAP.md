@@ -2,7 +2,9 @@
 
 This roadmap describes sequencing, not completed work. A milestone is complete only when its acceptance criteria are implemented and verified.
 
-## Milestone 1: Interaction prototype
+For detailed status, dependencies, approval gates, and implementation sequencing, see [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md).
+
+## Milestone 1: Interaction prototype — Complete
 
 Scope is intentionally limited to four features:
 
@@ -19,16 +21,33 @@ Acceptance criteria:
 - The unit moves predictably to the commanded location on the test map.
 - No combat, economy, construction, production, faction, or campaign logic is required.
 
-## Milestone 2: Core technical foundation
+## Milestone 2: Core technical foundation — Active
 
-Provisional scope, to be refined after Milestone 1:
+Current scope:
 
-- Establish modular, data-driven unit and building definition formats.
+- Establish modular, data-driven unit definitions.
 - Separate definition data, runtime state, commands, and presentation.
 - Define deterministic update and combat conventions.
-- Add focused tests or reproducible test scenes for foundational systems.
+- Validate health, targeting, combat, approach, bounds, and basic spacing with generic units.
+- Review the foundation before expanding into navigation, economy, or buildings.
 
-## Milestone 3: Small playable loop
+Implemented and committed:
+
+- Typed unit definitions and neutral `.tres` test data.
+- Health, damage, death, team IDs, explicit targeting, range, cooldowns, and deterministic instant-hit attacks.
+- Direct attack approach, moving-target tracking, footprint-aware map clamping, and basic friendly separation.
+
+Active:
+
+- Deterministic angular attack slots for multiple friendly attackers sharing one target.
+
+Still required to complete the milestone:
+
+- Manual regression verification and commit of the active slice.
+- Technical-foundation review and cleanup.
+- Approval of whether focused automated validation is warranted.
+
+## Milestone 3: Small playable loop — Planned
 
 Provisional scope:
 
@@ -40,7 +59,7 @@ Provisional scope:
 
 This milestone should not attempt the long-term content ceiling.
 
-## Milestone 4: Faction and mission proof
+## Milestone 4: Faction and mission proof — Planned
 
 Provisional scope:
 
@@ -49,7 +68,7 @@ Provisional scope:
 - Introduce a neutral biosphere interaction only if its rules have been approved.
 - Validate pacing, readability, and on-screen population limits.
 
-## Milestone 5: Vertical slice
+## Milestone 5: Vertical slice — Planned
 
 Provisional scope:
 

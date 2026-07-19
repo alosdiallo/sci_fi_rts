@@ -31,6 +31,8 @@ var _is_approaching_attack_target := false
 var _cached_target_position := Vector2.ZERO
 var _cached_approach_destination := Vector2.ZERO
 var _has_cached_approach_destination := false
+var _cached_attack_slot_index := -1
+var _cached_attack_slot_count := 0
 var _map_bounds := Rect2()
 var _has_map_bounds := false
 var _attack_cooldown_remaining := 0.0
@@ -100,6 +102,7 @@ func set_attack_target(target: TestUnit, map_bounds: Rect2 = Rect2()) -> void:
 		return
 
 	_set_map_bounds(map_bounds)
+	_clear_approach_cache()
 	_attack_target = target
 	_attack_cooldown_remaining = definition.attack_cooldown
 	_refresh_approach_destination()
@@ -116,12 +119,18 @@ func set_attack_target(target: TestUnit, map_bounds: Rect2 = Rect2()) -> void:
 func clear_attack_target() -> void:
 	_attack_target = null
 	_is_approaching_attack_target = false
-	_cached_target_position = Vector2.ZERO
-	_cached_approach_destination = Vector2.ZERO
-	_has_cached_approach_destination = false
+	_clear_approach_cache()
 	_attack_cooldown_remaining = 0.0
 	velocity = Vector2.ZERO
 	_update_target_indicator()
+
+
+func _clear_approach_cache() -> void:
+	_cached_target_position = Vector2.ZERO
+	_cached_approach_destination = Vector2.ZERO
+	_has_cached_approach_destination = false
+	_cached_attack_slot_index = -1
+	_cached_attack_slot_count = 0
 
 
 func get_attack_target() -> TestUnit:
@@ -203,13 +212,13 @@ func _update_attack_target_state(delta: float) -> bool:
 		return false
 
 	_update_target_indicator()
+	_update_approach_destination_if_needed()
 	var distance_to_target_squared := global_position.distance_squared_to(
 		_attack_target.global_position
 	)
 	var attack_range_squared := definition.attack_range * definition.attack_range
 	if distance_to_target_squared > attack_range_squared:
 		_attack_cooldown_remaining = definition.attack_cooldown
-		_update_approach_destination_if_needed()
 		if not _is_approaching_attack_target:
 			_is_approaching_attack_target = true
 		var reached_destination := _move_toward_approach_destination(delta)
@@ -254,28 +263,56 @@ func _get_preferred_firing_distance() -> float:
 
 
 func _update_approach_destination_if_needed() -> void:
+	var slot_state := _get_attack_slot_state()
 	if not _has_cached_approach_destination:
-		_refresh_approach_destination()
+		_refresh_approach_destination(slot_state)
 		return
 
 	if (
 		_cached_target_position.distance_squared_to(_attack_target.global_position)
 		>= APPROACH_TARGET_REFRESH_DISTANCE_SQUARED
+		or _cached_attack_slot_index != slot_state.x
+		or _cached_attack_slot_count != slot_state.y
 	):
-		_refresh_approach_destination()
+		_refresh_approach_destination(slot_state)
 
 
-func _refresh_approach_destination() -> void:
+func _refresh_approach_destination(slot_state: Vector2i = Vector2i(-1, 0)) -> void:
+	if slot_state.x < 0 or slot_state.y <= 0:
+		slot_state = _get_attack_slot_state()
+
 	_cached_target_position = _attack_target.global_position
-	var target_to_attacker := global_position - _cached_target_position
-	var direction_from_target := Vector2.RIGHT
-	if not target_to_attacker.is_zero_approx():
-		direction_from_target = target_to_attacker.normalized()
+	_cached_attack_slot_index = slot_state.x
+	_cached_attack_slot_count = slot_state.y
+	var slot_angle := TAU * float(slot_state.x) / float(slot_state.y)
+	var direction_from_target := Vector2.RIGHT.rotated(slot_angle)
 
 	_cached_approach_destination = _clamp_to_map_bounds(
 		_cached_target_position + direction_from_target * _get_preferred_firing_distance()
 	)
 	_has_cached_approach_destination = true
+
+
+func _get_attack_slot_state() -> Vector2i:
+	var attackers: Array[TestUnit] = []
+	for node: Node in get_tree().get_nodes_in_group(&"selectable_units"):
+		var candidate := node as TestUnit
+		if (
+			candidate != null
+			and is_instance_valid(candidate)
+			and candidate.is_inside_tree()
+			and candidate.is_alive()
+			and candidate.team_id == team_id
+			and candidate.has_valid_attack_target()
+			and candidate.get_attack_target() == _attack_target
+		):
+			attackers.append(candidate)
+	attackers.sort_custom(_unit_path_precedes)
+
+	var slot_index := attackers.find(self)
+	if slot_index < 0:
+		return Vector2i(0, 1)
+	return Vector2i(slot_index, attackers.size())
 
 
 func _move_toward_approach_destination(delta: float) -> bool:

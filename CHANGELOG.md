@@ -21,6 +21,8 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Approach and Spacing Slice 1: direct approach toward explicitly targeted stationary hostiles, stopping at an 8-pixel firing-range margin before existing cooldown-based attacks.
 - Approach and Spacing Slice 2: thresholded moving-target destination refresh and collision-footprint-aware map clamping for ground and approach movement.
 - Approach and Spacing Slice 3: capped deterministic friendly-unit separation during commanded movement, attack approach, and severe idle overlap.
+- Approach and Spacing Slice 4: stable `NodePath`-ordered angular approach slots for living same-team attackers sharing an explicit hostile target.
+- Development and implementation plan tracking milestone status, active work, dependencies, approval gates, next steps, and deferred scope.
 
 ### Changed
 
