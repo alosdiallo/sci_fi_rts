@@ -4,6 +4,8 @@ extends TestMap
 const CELL_SIZE := 32
 const GRID_SIZE := Vector2i(64, 64)
 const MAX_DESTINATION_PROJECTION_RADIUS := 3
+const GROUP_DESTINATION_CELL_SPACING := 2
+const GROUP_DESTINATION_CANDIDATE_MULTIPLIER := 4
 const STATIC_OBSTACLE_BOUNDS := Rect2(832.0, 512.0, 384.0, 1024.0)
 const ENCLOSURE_TOP := Rect2(1248.0, 256.0, 384.0, 128.0)
 const ENCLOSURE_BOTTOM := Rect2(1248.0, 512.0, 384.0, 128.0)
@@ -131,6 +133,110 @@ func request_navigation(
 		projected_cell,
 		projection.path
 	)
+
+
+func request_group_navigation(
+	start_world_positions: PackedVector2Array,
+	destination_world_position: Vector2
+) -> Array[NavigationPathResult]:
+	var results: Array[NavigationPathResult] = []
+	if start_world_positions.is_empty():
+		return results
+
+	var candidate_count := maxi(
+		start_world_positions.size() * GROUP_DESTINATION_CANDIDATE_MULTIPLIER,
+		start_world_positions.size() + 8
+	)
+	var offsets := calculate_group_destination_offsets(candidate_count)
+	var used_destination_cells: Dictionary[Vector2i, bool] = {}
+	for unit_index in range(start_world_positions.size()):
+		var result := _request_distinct_group_destination(
+			start_world_positions[unit_index],
+			destination_world_position,
+			offsets,
+			unit_index,
+			used_destination_cells
+		)
+		results.append(result)
+		if result.is_success():
+			used_destination_cells[world_to_grid(result.accepted_destination)] = true
+
+	return results
+
+
+static func calculate_group_destination_offsets(unit_count: int) -> Array[Vector2i]:
+	var offsets: Array[Vector2i] = []
+	if unit_count <= 0:
+		return offsets
+
+	offsets.append(Vector2i.ZERO)
+	var radius := 1
+	while offsets.size() < unit_count:
+		for x in range(-radius, radius + 1):
+			offsets.append(Vector2i(x, -radius))
+			if offsets.size() >= unit_count:
+				return offsets
+		for y in range(-radius + 1, radius + 1):
+			offsets.append(Vector2i(radius, y))
+			if offsets.size() >= unit_count:
+				return offsets
+		for x in range(radius - 1, -radius - 1, -1):
+			offsets.append(Vector2i(x, radius))
+			if offsets.size() >= unit_count:
+				return offsets
+		for y in range(radius - 1, -radius, -1):
+			offsets.append(Vector2i(-radius, y))
+			if offsets.size() >= unit_count:
+				return offsets
+		radius += 1
+
+	return offsets
+
+
+func _request_distinct_group_destination(
+	start_world_position: Vector2,
+	destination_world_position: Vector2,
+	offsets: Array[Vector2i],
+	preferred_offset_index: int,
+	used_destination_cells: Dictionary[Vector2i, bool]
+) -> NavigationPathResult:
+	var ordered_offsets := offsets.duplicate()
+	var preferred_offset := offsets[mini(preferred_offset_index, offsets.size() - 1)]
+	ordered_offsets.sort_custom(
+		func(first: Vector2i, second: Vector2i) -> bool:
+			var first_distance := (first - preferred_offset).length_squared()
+			var second_distance := (second - preferred_offset).length_squared()
+			if first_distance != second_distance:
+				return first_distance < second_distance
+			return _offset_precedes(first, second)
+	)
+
+	var first_failure: NavigationPathResult
+	for offset in ordered_offsets:
+		var candidate_position := (
+			destination_world_position
+			+ Vector2(offset * CELL_SIZE * GROUP_DESTINATION_CELL_SPACING)
+		)
+		var result := request_navigation(start_world_position, candidate_position)
+		if not result.is_success():
+			if first_failure == null:
+				first_failure = result
+			continue
+
+		var accepted_cell := world_to_grid(result.accepted_destination)
+		if used_destination_cells.has(accepted_cell):
+			continue
+		return result
+
+	if first_failure != null:
+		first_failure.requested_destination = destination_world_position
+		return first_failure
+
+	var failure := NavigationPathResult.new()
+	failure.status = NavigationPathResult.Status.NO_VALID_DESTINATION
+	failure.requested_start = start_world_position
+	failure.requested_destination = destination_world_position
+	return failure
 
 
 func request_firing_position(
@@ -610,6 +716,12 @@ func _is_cell_in_bounds(cell: Vector2i) -> bool:
 func _cell_precedes(first: Vector2i, second: Vector2i) -> bool:
 	if second.x < 0:
 		return true
+	if first.y != second.y:
+		return first.y < second.y
+	return first.x < second.x
+
+
+func _offset_precedes(first: Vector2i, second: Vector2i) -> bool:
 	if first.y != second.y:
 		return first.y < second.y
 	return first.x < second.x

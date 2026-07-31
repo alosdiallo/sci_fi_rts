@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 cleanup still awaits full manual regression, while navigation architecture planning is now active.
+**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 cleanup still awaits full manual regression, while navigation implementation has reached group movement.
 
 ## Confirmed
 
@@ -54,11 +54,13 @@ Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing 
 
 ## Active work
 
-Navigation Slice 4 is active in the working tree. Open `scenes/main/navigation_test.tscn` to test in-range attacks, open and obstacle-detour combat routes, blocked preferred slots, enclosed unreachable targets, eight-pixel target refresh, and two-attacker slot changes. The configured main scene remains unchanged and retains legacy direct combat approach.
+Navigation Slice 5A is active in the working tree. It assigns selected units stable `NodePath` order, distinct nearby destination cells, and individual routes. The navigation arena now contains four team-one group units for open-space and obstacle-detour tests. Chokepoint holding points, queueing, and yielding are reserved for Slice 5B.
+
+Open `scenes/main/navigation_test.tscn` to box-select two to four friendly units and issue open-space, obstacle-detour, and map-edge ground commands. Units should receive distinct final destinations and must not completely stack. The configured main scene remains unchanged and retains legacy direct combat approach.
 
 Approved principle: modest on-screen unit counts permit navigation, group movement, recovery, and tactical AI to prioritize correctness and behavior quality over maximum throughput. Optimize only after route reliability, quality, congestion/deadlock handling, and replanning are sound.
 
-The native validation runner now also covers preferred and alternate firing positions, range and clearance validity, deterministic candidate choice, enclosed-target failure, invalid targets, slot refresh, mutually exclusive route state, ground-command replacement, and death cleanup. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
+The native validation runner now also covers deterministic group offsets, distinct accepted destination cells, and repeatable group routes in addition to prior combat-navigation coverage. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

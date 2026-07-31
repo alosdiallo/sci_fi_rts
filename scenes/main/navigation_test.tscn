@@ -31,6 +31,16 @@ position = Vector2(320, 1152)
 definition = ExtResource("4_standard")
 team_id = 1
 
+[node name="GroupUnit3" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(416, 1024)
+definition = ExtResource("7_fast")
+team_id = 1
+
+[node name="GroupUnit4" parent="Units" instance=ExtResource("3_test_unit")]
+position = Vector2(416, 1152)
+definition = ExtResource("7_fast")
+team_id = 1
+
 [node name="HostileInRange" parent="Units" instance=ExtResource("3_test_unit")]
 position = Vector2(512, 1024)
 definition = ExtResource("7_fast")

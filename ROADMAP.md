@@ -39,11 +39,12 @@ Implemented and committed:
 
 Active:
 
-- Deterministic angular attack slots for multiple friendly attackers sharing one target.
+- Navigation Slice 5A: deterministic distinct group destinations and individual routes.
 
 Still required to complete the milestone:
 
-- Manual regression verification and commit of the active slice.
+- Complete group chokepoint queueing/yielding and bounded stuck recovery.
+- Manual regression verification and commit of active slices.
 - Technical-foundation review and cleanup.
 - Approval of whether focused automated validation is warranted.
 

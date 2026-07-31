@@ -31,11 +31,23 @@ func _issue_movement_command(world_position: Vector2) -> void:
 	if selected_units.is_empty():
 		return
 
-	var issued_route := false
+	selected_units.sort_custom(_unit_path_precedes)
+	var start_positions := PackedVector2Array()
 	for unit in selected_units:
 		navigation_map.configure_clearance_for_unit(unit)
-		var result := navigation_map.request_navigation(unit.global_position, world_position)
+		start_positions.append(unit.global_position)
+
+	var results := navigation_map.request_group_navigation(
+		start_positions,
+		world_position
+	)
+	var issued_route := false
+	var had_failure := false
+	for unit_index in range(selected_units.size()):
+		var unit := selected_units[unit_index]
+		var result := results[unit_index]
 		if not result.is_success():
+			had_failure = true
 			unit.record_navigation_failure(result.status, world_position)
 			navigation_map.show_navigation_failure(result)
 			print(
@@ -83,5 +95,9 @@ func _issue_movement_command(world_position: Vector2) -> void:
 		)
 		issued_route = true
 
-	if issued_route:
+	if issued_route and not had_failure:
 		navigation_map.clear_navigation_failure()
+
+
+func _unit_path_precedes(first: TestUnit, second: TestUnit) -> bool:
+	return String(first.get_path()) < String(second.get_path())

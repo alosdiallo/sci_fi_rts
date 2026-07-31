@@ -27,9 +27,9 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Navigation Slice 4 — explicit-target combat routing
-- **Last committed checkpoint:** Approach and Spacing Slice 4 — deterministic angular attack slots
-- **Current playable state:** one bounded technical test map with camera controls, four generic units, selection, movement, data-driven unit values, prototype teams, explicit targeting, direct approach, health, cooldown-based instant-hit combat, death cleanup, footprint-aware bounds, moving-target tracking, friendly separation, and deterministic angular attack slots
+- **Active work:** Navigation Slice 5A — deterministic group destinations and individual routes
+- **Last committed checkpoint:** Navigation Slice 4 — explicit-target combat routing
+- **Current playable state:** one bounded interaction/combat test map plus a separate navigation arena with static-obstacle routing, destination validation, simplified routes, navigation-based combat approach, and active group-destination work
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
 
 ## Milestone status
@@ -95,19 +95,19 @@ Status: **Complete**
 
 Slice 4 was manually accepted, committed, and pushed. Milestone 2C is complete.
 
-## Active work: Milestone 2 Cleanup Slice 2
+## Milestone 2 cleanup status
 
 The technical-foundation audit is recorded in `MILESTONE_2_REVIEW.md`. It reviews current responsibilities, refactor timing, temporary visuals, validation, regression coverage, automated checks, main-scene continuity, and navigation readiness.
 
 Cleanup Slice 1 separated simulation-wide unit discovery from selection eligibility with a neutral `test_units` group and added one-time missing/unsupported-footprint diagnostics while preserving center-only fallback behavior.
 
-Cleanup Slice 2 is active in the working tree. It adds a repository-native GDScript runner for deterministic definition, health, hostility, targeting, footprint, firing-distance, target-refresh, and angular-slot checks:
+Cleanup Slice 2 is committed. It adds a repository-native GDScript runner for deterministic definition, health, hostility, targeting, footprint, firing-distance, target-refresh, angular-slot, and navigation checks:
 
 ```bash
 godot --headless --path . --script res://tests/run_validation.gd
 ```
 
-The cleanup phase remains active until the full manual interaction regression passes, the final diff is reviewed, and the changes are committed and pushed.
+The cleanup phase remains open only for the full manual interaction regression and any cleanup justified by navigation results.
 
 ## Active planning: Navigation architecture
 
@@ -117,7 +117,7 @@ Approved principle: the game will deliberately use modest on-screen unit counts 
 
 Navigation priorities are correctness and reliability, route quality, congestion/deadlock handling, responsive replanning, and only then performance optimization.
 
-## Active implementation: Navigation Slice 4
+## Active implementation: Navigation Slice 5A
 
 Navigation Slice 1 established the separately run geometric arena at `scenes/main/navigation_test.tscn`, its map-owned clearance-aware 32-pixel `AStarGrid2D`, one-unit ground routes, per-unit waypoint following, and temporary path/grid diagnostics.
 
@@ -127,7 +127,12 @@ Navigation Slice 3 retains the raw `AStarGrid2D` route for diagnostics and produ
 
 Navigation Slice 4 routes explicit hostile-target commands in the navigation arena to deterministic preferred or alternate firing positions. Candidate cells must be reachable, footprint-valid, within authored range, and are ordered by preferred-distance deviation, slot-angle deviation, route length, then stable grid coordinates. Moving targets and slot changes refresh routes only after the existing material thresholds; unreachable targets retain explicit target state but stop safely with visible failure feedback.
 
-The configured project main scene retains legacy direct combat approach. Group navigation, recovery, general replanning, dynamic obstacles, automatic targeting, and attack-move remain deferred.
+Navigation Slice 5 is divided into two checkpoints:
+
+- **Slice 5A — active:** stable `NodePath` ordering, distinct deterministic group destination cells, and individual routes for every selected unit.
+- **Slice 5B — planned:** chokepoint holding points, deterministic priority, queueing, and yielding.
+
+The configured project main scene retains legacy direct combat approach. Chokepoint yielding, stuck recovery, general replanning, dynamic obstacles, automatic targeting, and attack-move remain deferred.
 
 Manual launch:
 
@@ -147,7 +152,7 @@ The next phase should consolidate the technical prototype before adding broad co
 
 ### 1. Milestone 2 review and cleanup
 
-Status: **Active**
+Status: **Active — manual regression remains**
 
 Dependencies:
 
@@ -155,7 +160,7 @@ Dependencies:
 
 Work:
 
-- Complete and verify Cleanup Slice 2.
+- Keep the native validation runner current with navigation work.
 - Run the full manual regression checklist.
 - Review warnings, node ownership, naming, and temporary debug visuals.
 - Remove or explicitly retain temporary prototype-only feedback.
@@ -174,7 +179,7 @@ Exit criteria:
 
 ### 2. Spatial scale and navigation requirements
 
-Status: **Active — Slice 4 implementation**
+Status: **Active — Slice 5A implementation**
 
 Dependencies:
 

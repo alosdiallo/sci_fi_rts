@@ -306,6 +306,72 @@ func _check_navigation_grid() -> void:
 		and open_result.path[0].is_equal_approx(open_result.accepted_destination),
 		"open route did not simplify to its destination"
 	)
+
+	var four_unit_offsets := NavigationTestMap.calculate_group_destination_offsets(4)
+	_expect_true(
+		"group destination offsets are distinct and deterministic",
+		four_unit_offsets
+		== [
+			Vector2i.ZERO,
+			Vector2i(-1, -1),
+			Vector2i(0, -1),
+			Vector2i(1, -1),
+		],
+		"four-unit offset order changed or contained duplicates"
+	)
+	var group_starts := PackedVector2Array(
+		[
+			Vector2(320.0, 736.0),
+			Vector2(320.0, 800.0),
+			Vector2(384.0, 736.0),
+			Vector2(384.0, 800.0),
+		]
+	)
+	var group_destination := Vector2(704.0, 800.0)
+	var group_results := navigation_map.request_group_navigation(
+		group_starts,
+		group_destination
+	)
+	var repeated_group_results := navigation_map.request_group_navigation(
+		group_starts,
+		group_destination
+	)
+	var group_destinations: Dictionary[Vector2i, bool] = {}
+	var group_routes_succeed := group_results.size() == group_starts.size()
+	var group_assignment_is_deterministic := (
+		repeated_group_results.size() == group_results.size()
+	)
+	for index in range(group_results.size()):
+		var group_result := group_results[index]
+		group_routes_succeed = group_routes_succeed and group_result.is_success()
+		if group_result.is_success():
+			group_destinations[
+				navigation_map.world_to_grid(group_result.accepted_destination)
+			] = true
+		if (
+			index >= repeated_group_results.size()
+			or group_result.status != repeated_group_results[index].status
+			or not group_result.accepted_destination.is_equal_approx(
+				repeated_group_results[index].accepted_destination
+			)
+			or group_result.path != repeated_group_results[index].path
+		):
+			group_assignment_is_deterministic = false
+	_expect_true(
+		"group navigation assigns one successful route per unit",
+		group_routes_succeed,
+		"at least one open-space group member did not receive a route"
+	)
+	_expect_true(
+		"group navigation assigns distinct accepted destination cells",
+		group_destinations.size() == group_starts.size(),
+		"group members shared an accepted destination cell"
+	)
+	_expect_true(
+		"group navigation assignment is deterministic",
+		group_assignment_is_deterministic,
+		"repeated group query produced different destinations or routes"
+	)
 	_expect_true(
 		"navigation obstacle detour retains turning waypoints",
 		direct_result.raw_path.size() > direct_result.path.size()
