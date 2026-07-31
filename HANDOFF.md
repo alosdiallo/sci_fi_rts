@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 cleanup still awaits full manual regression, while navigation implementation has reached chokepoint queueing.
+**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Navigation Slices 1–6 are committed, and Milestone 2 is in closeout after a representative manual interaction and navigation regression.
 
 ## Confirmed
 
@@ -49,19 +49,23 @@
 - Navigation Slice 3 adds deterministic line-of-sight waypoint reduction, conservative supercover-style segment validation, smoother intermediate-waypoint transitions, raw-versus-simplified path drawing, and per-command route metrics.
 - Navigation Slice 4 routes explicitly targeted hostiles in the navigation arena to reachable deterministic firing positions, refreshes on material target or slot changes, and reports unreachable combat positions without direct-movement fallback.
 - Navigation Slice 5A assigns stable, distinct destination cells and individual routes to selected groups.
+- Navigation Slice 5B adds deterministic one-cell chokepoint holding, priority, queueing, and yielding.
+- Navigation Slice 6 adds measured route progress, intentional-wait exclusion, bounded local refresh and replanning, and explicit terminal stuck failure.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
 Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing is complete. Slice 4 was manually accepted, committed, and pushed.
 
 ## Active work
 
-Navigation Slice 5B is committed. Navigation Slice 6 is active in the working tree: route progress is measured over 1.5-second windows, intentional chokepoint waiting is excluded, recovery refreshes local movement once, performs at most two deterministic route recalculations, and then fails visibly instead of looping forever. A new command resets the prior recovery budget.
+Navigation Slice 6 is committed. The current closeout change fixes a manual-regression finding: friendly separation could push a routed unit outside clearance-valid navigation space. Routed movement now accepts a separated step only when the map reports its segment as navigable, otherwise falls back to the command-only step or holds position. A live four-unit test verifies that grouped units remain in navigable cells and finish without false terminal recovery.
 
 Open `scenes/main/navigation_test.tscn`, box-select two to four friendly units north of the lower wall, and command them south of it. Units should wait at the cyan/yellow holding marker and traverse the passage one at a time without permanent stacking. The configured main scene remains unchanged and retains legacy direct combat approach.
 
 Approved principle: modest on-screen unit counts permit navigation, group movement, recovery, and tactical AI to prioritize correctness and behavior quality over maximum throughput. Optimize only after route reliability, quality, congestion/deadlock handling, and replanning are sound.
 
-The native validation runner now also covers progress thresholds, intentional-wait exclusion, recovery escalation order, attempt limits, live route replanning, explicit terminal failure, and new-command reset in addition to prior group/chokepoint/combat-navigation coverage. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
+The native validation runner now reports 120 passing checks. It covers definition/unit invariants, group/chokepoint/combat navigation, progress thresholds, intentional-wait exclusion, recovery escalation and limits, live replanning, terminal failure, new-command reset, and routed-group clearance under separation. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`.
+
+The representative manual pass verified camera movement, selection/deselection, ground commands, friendly-command no-op, explicit combat, damage/death cleanup, obstacle detours, rejected blocked destinations, multi-attacker slots, group obstacle routing, and bidirectional chokepoint traversal. Godot showed no warning or error count after the pass. The next approval gate is a focused plan for decomposing the now 1,409-line `TestUnit`; do not start a broad refactor or economy implementation without approval.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

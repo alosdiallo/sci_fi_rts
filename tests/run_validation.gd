@@ -17,7 +17,7 @@ func _run_validation() -> void:
 	_check_pure_calculations()
 	_check_footprint_calculations()
 	_check_navigation_recovery()
-	_check_navigation_grid()
+	await _check_navigation_grid()
 	_check_health_damage_hostility_and_targeting()
 
 	if OS.get_cmdline_user_args().has("--force-failure"):
@@ -459,6 +459,107 @@ func _check_navigation_grid() -> void:
 		group_assignment_is_deterministic,
 		"repeated group query produced different destinations or routes"
 	)
+
+	var routed_group_starts := PackedVector2Array(
+		[
+			Vector2(640.0, 960.0),
+			Vector2(640.0, 1088.0),
+			Vector2(704.0, 960.0),
+			Vector2(704.0, 1088.0),
+		]
+	)
+	var routed_group_results := navigation_map.request_group_navigation(
+		routed_group_starts,
+		Vector2(1408.0, 1024.0)
+	)
+	var routed_group: Array[TestUnit] = []
+	var routed_group_fixture_valid := (
+		routed_group_results.size() == routed_group_starts.size()
+	)
+	var routed_definition := _make_valid_definition()
+	routed_definition.movement_speed = 900.0
+	for unit_index in range(routed_group_starts.size()):
+		var routed_unit := _instantiate_unit(
+			"RoutedGroupUnit%d" % unit_index,
+			routed_definition,
+			3
+		)
+		routed_group.append(routed_unit)
+		if (
+			routed_unit == null
+			or unit_index >= routed_group_results.size()
+			or not routed_group_results[unit_index].is_success()
+		):
+			routed_group_fixture_valid = false
+			continue
+		var routed_result := routed_group_results[unit_index]
+		routed_unit.global_position = routed_group_starts[unit_index]
+		routed_unit.set_movement_route(
+			routed_result.path,
+			navigation_map.get_map_bounds(),
+			Vector2(1408.0, 1024.0),
+			routed_result.accepted_destination,
+			routed_result.status,
+			routed_result.raw_path,
+			navigation_map,
+			1,
+			unit_index,
+			routed_result.chokepoint_id,
+			routed_result.chokepoint_holding_point,
+			routed_result.chokepoint_entry_side
+		)
+		routed_unit.set_physics_process(true)
+
+	var routed_group_clearance_valid := routed_group_fixture_valid
+	for simulation_step in range(720):
+		await physics_frame
+		var every_route_complete := true
+		for routed_unit in routed_group:
+			if routed_unit == null:
+				continue
+			if routed_unit.is_ground_route_active():
+				every_route_complete = false
+			if not navigation_map.is_cell_navigable(
+				navigation_map.world_to_grid(routed_unit.global_position)
+			):
+				routed_group_clearance_valid = false
+		if every_route_complete:
+			break
+
+	var routed_group_completed := routed_group_fixture_valid
+	var routed_group_statuses := PackedStringArray()
+	for routed_unit in routed_group:
+		if (
+			routed_unit == null
+			or routed_unit.is_ground_route_active()
+			or routed_unit.has_navigation_recovery_failure()
+		):
+			routed_group_completed = false
+		if routed_unit != null:
+			routed_group_statuses.append(
+				"%s position=%s active=%s recovery=%d failed=%s"
+				% [
+					routed_unit.name,
+					routed_unit.global_position,
+					routed_unit.is_ground_route_active(),
+					routed_unit.get_navigation_recovery_events(),
+					routed_unit.has_navigation_recovery_failure(),
+				]
+			)
+		if routed_unit != null:
+			routed_unit.set_physics_process(false)
+		_free_if_valid(routed_unit)
+	_expect_true(
+		"navigation routed group separation preserves clearance",
+		routed_group_clearance_valid,
+		"local separation moved a routed group unit into a blocked cell"
+	)
+	_expect_true(
+		"navigation routed group completes without false recovery",
+		routed_group_completed,
+		"clearance-safe routed group stalled, failed recovery, or remained active: %s"
+		% "; ".join(routed_group_statuses)
+	)
 	_expect_true(
 		"navigation obstacle detour retains turning waypoints",
 		direct_result.raw_path.size() > direct_result.path.size()
@@ -487,6 +588,29 @@ func _check_navigation_grid() -> void:
 			Vector2(848.0, 464.0)
 		),
 		"near-corner segment was allowed through blocked clearance cells"
+	)
+	var safe_step_start := Vector2(784.0, 528.0)
+	var unsafe_separation_step := Vector2(848.0, 464.0)
+	var safe_command_step := Vector2(784.0, 464.0)
+	_expect_vector(
+		"navigation separation falls back to command-safe step",
+		TestUnit.choose_navigation_safe_endpoint(
+			navigation_map,
+			safe_step_start,
+			unsafe_separation_step,
+			safe_command_step
+		),
+		safe_command_step
+	)
+	_expect_vector(
+		"navigation rejects separation and command steps when both are blocked",
+		TestUnit.choose_navigation_safe_endpoint(
+			navigation_map,
+			safe_step_start,
+			unsafe_separation_step,
+			Vector2(848.0, 528.0)
+		),
+		safe_step_start
 	)
 	_expect_true(
 		"navigation simplified destination is exact",

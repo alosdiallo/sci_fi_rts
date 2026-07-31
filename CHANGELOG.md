@@ -34,6 +34,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Navigation Slice 5A: stable group ordering, deterministic distinct final destinations, individual routes, four-unit arena fixtures, and native validation coverage.
 - Navigation Slice 5B: one-cell chokepoint fixture, bidirectional holding points, passage reservation, stable queue priority, yielding, waiting diagnostics, and native validation coverage.
 - Navigation Slice 6: isolated route-progress tracking, intentional-wait exclusion, staged local refresh, two-attempt deterministic route recalculation, explicit stuck failure feedback, and native integration coverage.
+- Milestone 2 closeout validation for routed groups moving with local friendly separation.
 
 ### Changed
 
@@ -51,3 +52,5 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Removed the temporary manual-damage hook after explicit target commands became capable of exercising health and death.
 - Recorded Approach and Spacing Slice 4 as manually accepted, committed, and pushed; Milestone 2C as complete; and Milestone 2 review and cleanup as the active phase.
 - Established navigation planning as active and approved quality-over-throughput for deliberately modest unit counts, with correctness, route quality, deadlock handling, and responsive replanning prioritized before optimization.
+- Kept routed separation inside static navigation clearance by falling back to the command-only step, or holding position when neither candidate step is valid.
+- Recorded the representative Milestone 2 interaction/navigation regression and the focused post-navigation `TestUnit` decomposition gate.

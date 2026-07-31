@@ -2,16 +2,17 @@
 
 ## Status and purpose
 
-This review audits the committed and manually accepted Milestone 2 prototype after completion of Approach and Spacing Slice 4. It recommends the smallest cleanup appropriate before navigation and economy prototypes.
+This review began after Approach and Spacing Slice 4 and now records the post-navigation Milestone 2 closeout. Navigation Slices 1–6 are committed; a representative manual interaction/navigation regression was completed on 2026-07-31.
 
 This document does not authorize implementation. It does not redefine game design, final unit architecture, navigation, economy, or content.
 
 ## Executive findings
 
 - The prototype has clear outer boundaries: authored values are in `UnitDefinition`, pointer commands are in focused controllers, map bounds have one authority, and per-unit runtime state and presentation are owned by `TestUnit`.
-- `test_unit.gd` is now a large prototype script: 512 lines, 17 private runtime-state fields, 12 public APIs, six node references, and six prototype constants. Its responsibilities are still traceable, but movement, attack approach, separation, slotting, and combat timing are coupled closely enough that adding navigation directly would increase regression risk.
-- Size alone does not justify a component refactor. The navigation prototype will reveal the real movement boundary; extracting movement before those requirements exist would likely create an abstraction that must immediately change.
-- No broad refactor is required before navigation. The recommended cleanup is narrow: retain `TestUnit` intact, separate simulation-wide discovery from the selection-specific group, make footprint fallback diagnostic, add a small repository-native validation slice, and complete one full manual regression pass.
+- `test_unit.gd` is now a 1,409-line prototype script with more than 40 private runtime-state fields. Navigation has added route ownership, waypoint progression, destination/result metadata, chokepoint state, recovery budgets, combat routing, and debug presentation to its earlier movement/combat responsibilities.
+- The decision to defer extraction until navigation established real contracts was correct. Those contracts now exist, so a focused decomposition plan is justified before economy, production, or real unit categories expand the script further.
+- Do not begin a broad component rewrite. The first proposed boundary should isolate navigation route execution and recovery behind a narrow typed contract while leaving `CharacterBody2D` motion ownership and existing behavior explicit until the plan proves otherwise.
+- Cleanup Slices 1–2 and Navigation Slices 1–6 are committed. The active closeout change fixes a clearance defect found during manual regression and adds a live grouped-routing check.
 - All current geometric visuals remain useful diagnostics. They should be explicitly treated as temporary, not removed or replaced with final presentation.
 - `scenes/main/milestone_1.tscn` should remain the main scene until a second test composition has materially different fixtures or lifecycle needs.
 
@@ -32,6 +33,12 @@ This document does not authorize implementation. It does not redefine game desig
 | `scripts/maps/test_map.gd` | Owns the authoritative 2048 × 2048 `MAP_BOUNDS` and draws the background, grid, and border | Prototype map dimensions and debug presentation |
 | `scenes/maps/test_map.tscn` | Instantiates the focused map script on a `Node2D` | Map scene wrapper |
 | `scenes/main/milestone_1.tscn` | Composes the map, camera, four unit instances, selection UI/controller, and contextual command controller | Prototype composition root and per-instance assignments |
+| `scripts/maps/navigation_test_map.gd` | Owns the navigation grid, static fixtures, clearance queries, destination resolution, route simplification, combat-position search, group destinations, and chokepoint coordination | Navigation arena authority and deterministic routing |
+| `scripts/commands/navigation_command_controller.gd` | Converts arena commands into per-unit ground or combat route requests and preserves rejected-command state | Navigation command orchestration |
+| `scripts/navigation/navigation_path_result.gd` | Carries typed route success/failure status, accepted destination, and raw/simplified route data | Navigation result value object |
+| `scripts/navigation/navigation_recovery_tracker.gd` | Measures progress windows and bounds local refresh/replan escalation | Per-route recovery policy |
+| `scenes/main/navigation_test.tscn` | Composes the separate obstacle, destination, group, combat, and chokepoint arena | Navigation regression composition |
+| `tests/run_validation.gd` | Runs repository-native deterministic and live-physics validation without third-party dependencies | Automated technical regression runner |
 
 ### Authored data
 
@@ -74,17 +81,22 @@ The unit scene owns all unit visual nodes, while `TestUnit` updates their state.
 - Cached approach destinations and reached-but-obsolete fallback.
 - Friendly-only local separation, stable coincident-position handling, and speed capping.
 - Stable `NodePath` attacker discovery, ordering, angular slots, and slot-cache refresh.
+- Ground-route metadata, raw and simplified waypoints, waypoint progression, and route completion.
+- Combat-navigation requests, resolved firing positions, route refresh, and explicit failure state.
+- Chokepoint command priority, holding, reservation, waiting, and yielding integration.
+- Measured route progress, bounded local refresh and replanning, new-command reset, and terminal stuck failure.
+- Temporary route, destination, chokepoint, and recovery diagnostics.
 
 ### Size and state
 
-The script is 512 lines. It declares:
+The script is 1,409 lines. It declares:
 
-- 17 private runtime-state fields.
-- 12 public methods: selection setters/query, movement and attack-target commands, target queries, hostility query, damage/health queries, and alive query.
+- More than 40 private runtime-state fields spanning interaction, combat, routing, congestion, and recovery.
+- A substantially expanded public query/command surface for route results, chokepoint coordination, recovery diagnostics, combat navigation, selection, targeting, health, and movement.
 - Six `@onready` presentation/shape references.
-- Six prototype tuning constants, including derived refresh distance.
+- Nine prototype tuning constants, including approach, separation, and recovery thresholds.
 
-The public API remains reasonably small relative to the behavior implemented. Most complexity is private and organized into named helpers. State names consistently distinguish cached values, active flags, and authored values read from `definition`.
+Most complexity remains organized into named helpers, and state names consistently distinguish cached values, active flags, and authored values. The public surface is no longer small, however: navigation and chokepoint coordination require outside consumers to query and mutate several route states. This is now enough evidence to plan a focused boundary.
 
 ### Coupling and understandability
 
@@ -100,7 +112,7 @@ These rules form one per-unit state machine even though it is represented by boo
 
 The script is still understandable for the current four-unit prototype, but it is near the practical limit for adding more cross-cutting behavior safely. Navigation would add path state, route failure, waypoint progression, repath policy, obstacle interaction, destination validity, and movement cancellation. Economy, squads, and distinct vehicle behavior would add consumers with different capabilities and footprints. Adding all of those directly to `TestUnit` would make state combinations and cleanup paths difficult to reason about.
 
-This is a concrete warning against extending the script indefinitely, not evidence that a broad refactor is already required.
+This is now evidence that another major system should not be added directly to `TestUnit`. It still does not justify an unplanned broad component rewrite.
 
 ## 3. Refactor options
 
@@ -237,18 +249,13 @@ Justification and timing:
 - Not justified now.
 - Consider only after navigation and a second real unit category expose repeated, stable responsibility boundaries.
 
-### Recommendation
+### Recommendation after navigation
 
-Choose **Option A: keep `TestUnit` intact through the first navigation prototype**, with narrow cleanup and tests rather than structural extraction.
+Option A was completed successfully through Navigation Slice 6. Cleanup also introduced `test_units`, footprint fallback diagnostics, and the native validation runner.
 
-The concrete cleanup should improve diagnostics and reduce semantic coupling without relocating simulation:
+The next task should be **planning Option D as a focused extraction**, using the contracts navigation proved. The plan should identify route request/result ownership, waypoint progression, cancellation/replacement, chokepoint coordination, recovery escalation, failure reporting, physics movement ownership, and the smallest regression-preserving implementation slices. It must not authorize a broad combat/presentation/unit rewrite.
 
-1. Introduce a neutral prototype group such as `test_units` for simulation-wide discovery. Keep `selectable_units` exclusively for selection and command eligibility.
-2. Emit one clear diagnostic when footprint half-extents cannot be derived and center-only clamping/separation fallback is used.
-3. Add a small repository-native headless validation slice for authored definitions and non-visual per-unit invariants.
-4. Run and record the full manual regression checklist below.
-
-After the first navigation prototype, reassess Option D using the actual route, cancellation, and failure contracts. Consider Option B only when presentation begins to vary or temporary visuals are replaced. Do not begin Option C or E without a second concrete unit/attack requirement.
+Consider Option B only when presentation begins to vary or temporary visuals are replaced. Do not begin Option C or E without a second concrete unit/attack requirement.
 
 ## 4. Temporary prototype visuals
 
@@ -300,6 +307,18 @@ No folder move, broad rename, base class, registry, manager, or hierarchy is jus
 - Map bounds are supplied with commands and retained per unit. Navigation should later define how a unit receives authoritative movement context at initialization; do not redesign that contract during this cleanup.
 
 ## 7. Manual Milestone 2 regression checklist
+
+### Recorded representative pass — 2026-07-31
+
+The closeout pass exercised the running project through Godot rather than relying only on headless launch checks. It verified:
+
+- Main-scene click and drag selection, empty-ground deselection, ground movement, destination replacement, camera-relative commands, friendly-command no-op, explicit hostile targeting, approach, damage, health feedback, death, and target cleanup.
+- Navigation-arena static-obstacle detours, blocked-destination rejection with prior-state preservation, multi-attacker combat slots, group routing around the large obstacle, and lower-chokepoint traversal in both directions.
+- Godot reported zero warning and error counts after the interaction pass.
+
+The pass found one real defect: friendly separation could nudge a routed unit outside clearance-valid navigation space, producing an invalid-start rejection on its next route. The current closeout fix validates separated route segments, falls back to the command-only step, and adds a live four-unit regression. The runner now reports 120 passed and zero failed checks.
+
+The exhaustive checklist below remains the reference for future releases and material input/windowing changes. Low/high render-cap comparison, window-resize coverage, every drag direction, and temporary editor mutation cases were not repeated during this representative closeout pass.
 
 ### A. Launch and diagnostics
 
@@ -475,9 +494,9 @@ Keep `scenes/main/milestone_1.tscn` as the configured main scene through initial
 
 Change the configured main scene only when the new sandbox becomes the regular integrated prototype, or when maintaining the old composition no longer provides a useful regression baseline. Do not rename merely to match the current milestone number.
 
-## 10. Navigation readiness
+## 10. Navigation outcome
 
-The next architecture must support testing:
+The implemented navigation foundation supports testing:
 
 - Static obstacle fixtures with known open and blocked routes.
 - A clear boundary between global route planning and existing local friendly separation.
@@ -488,14 +507,14 @@ The next architecture must support testing:
 - Movement replacement and cancellation while a route is active.
 - Explicit target approach around obstacles without automatic target acquisition.
 
-### Cleanup truly required before navigation
+### Cleanup completed before and during navigation
 
-- Complete the manual regression baseline so navigation failures can be distinguished from existing behavior.
-- Approve a neutral all-test-units discovery group instead of using selection eligibility for spacing and slot participation.
-- Approve a clear diagnostic for missing/unsupported footprint shapes.
-- Define the first navigation test cases and success/failure semantics before choosing Godot navigation, AStar, a grid, or another router.
+- A representative manual regression baseline now distinguishes navigation failures from existing interaction/combat behavior.
+- `test_units` separates simulation discovery from selection eligibility.
+- Missing/unsupported footprint shapes produce a clear one-time diagnostic.
+- The approved 32-pixel clearance-aware `AStarGrid2D` arena covers static obstacles, narrow passages, invalid/unreachable destinations, cancellation/replacement, combat approach, group routes, congestion, and bounded recovery.
 
-### Not required before navigation
+### Still intentionally deferred
 
 - Extracting movement into a component.
 - A final footprint or movement-class Resource schema.
@@ -503,66 +522,62 @@ The next architecture must support testing:
 - A manager, registry, service locator, autoload, event bus, factory, or inheritance hierarchy.
 - Replacing direct movement, separation, or prototype visuals before a route consumer exists.
 
-Movement cancellation should become an explicit API/state transition when the navigation slice introduces a route that can fail or be cancelled. That change belongs with the first route consumer, not this documentation cleanup.
-
-Proper pathfinding should be selected only after representative static obstacles, narrow passages, unit counts, footprints, and unreachable cases are defined. Existing separation is local overlap mitigation, not routing.
+Dynamic topology, moving obstacles, terrain costs, attack-move, automatic acquisition, and large-crowd optimization remain outside the current foundation. Existing separation remains local overlap mitigation, not routing.
 
 ## 11. Final recommendation
 
 ### Findings
 
-- Milestone 2 has a coherent, data-driven technical foundation and a useful four-unit regression laboratory.
-- `TestUnit` is broad but not yet confused: public boundaries remain narrow and coupled rules are locally visible.
-- Navigation is the next requirement most likely to reveal a justified movement component boundary.
-- The only current semantic coupling worth correcting is use of `selectable_units` for simulation-wide separation and slot discovery.
-- Silent footprint fallback is safe but too easy to miss during future scene changes.
+- Milestone 2 has a coherent, data-driven technical foundation, a useful interaction/combat laboratory, and a separate navigation regression arena.
+- Deferring structural extraction until navigation was correct; route, cancellation, congestion, recovery, and failure contracts are now concrete.
+- At 1,409 lines and more than 40 private state fields, `TestUnit` should not absorb economy or another major movement system unchanged.
+- The 120-check native runner plus the recorded interactive pass provide a suitable safety net for a staged extraction.
+- Temporary diagnostics remain valuable and should stay until replacement presentation exists.
 
-### Recommended cleanup scope
+### Recommended closeout scope
 
-1. Keep `TestUnit` structurally intact.
-2. Add a neutral prototype unit-discovery group and reserve `selectable_units` for selection/commands.
-3. Add one clear missing/unsupported-footprint diagnostic while preserving center-only fallback.
-4. Add the smallest native headless validation slice for definition loading/validation, damage clamping, and hostility.
-5. Run the complete manual checklist and record a warning-free baseline.
-6. Keep every current prototype visual and the existing main scene.
+1. Commit the clearance-safe routed-separation fix and its live four-unit regression.
+2. Keep every current prototype visual and both technical scenes.
+3. Create a focused `TestUnit` decomposition plan before implementation.
+4. Prefer navigation route execution/recovery as the first candidate boundary; preserve explicit physics ownership and do not broaden the refactor without evidence.
+5. Begin economy planning only after this architecture gate is approved.
 
 ### Explicitly not worth changing
 
-- Do not split presentation, combat, movement, or the entire unit into components now.
+- Do not split presentation, combat, movement, or the entire unit into components without the focused plan and approval.
 - Do not rename the main scene or reorganize folders.
 - Do not add final visuals, navigation abstractions, footprint fields, movement classes, building data, or economy data.
 - Do not add a framework, manager, registry, autoload, event bus, factory, service locator, or addon.
 - Do not “clean up” deterministic constants that are intentionally local prototype conventions.
 
-### Suggested implementation slices
+### Suggested next slices
 
-These slices require separate authorization:
+These require separate authorization:
 
-1. **Cleanup Slice 1 — discovery and diagnostics:** add `test_units` group use for separation/slots and footprint-fallback diagnostics; run full regressions.
-2. **Cleanup Slice 2 — native validation:** add one headless GDScript runner for Resource validation/loading, damage clamping, and hostility; no framework.
-3. **Navigation requirements slice:** create documentation and test-case fixtures for obstacles, narrow passages, destination validity, unreachable routes, cancellation, and target approach. Choose routing technology only after those cases are approved.
+1. **Architecture plan only:** document the current `TestUnit` responsibility/state map and propose the smallest navigation/recovery extraction contract, affected files, migration order, regression gates, and rollback boundary.
+2. **Extraction Slice 1:** move only pure route-progress/recovery policy or another equally narrow approved boundary; preserve behavior and public commands.
+3. **Extraction Slice 2:** move route execution state only if Slice 1 demonstrates a clean interface and all validation/manual checks remain green.
+4. **Milestone 3 planning:** define the first visible gather-return-deposit loop after the technical foundation is closed.
 
 ### Approval gates
 
 The user must approve:
 
-1. Keeping `TestUnit` intact through the first navigation prototype.
-2. Adding a neutral `test_units` group while retaining `selectable_units`.
-3. The footprint diagnostic and center-only fallback policy.
-4. Retaining all current visuals as temporary diagnostics.
-5. Adding a repository-native headless validation runner and its exact scope.
-6. Keeping `milestone_1.tscn` as the main scene.
-7. The navigation test cases, footprint assumptions, route-failure behavior, and routing technology before navigation implementation.
+1. The focused decomposition plan and its first extraction boundary.
+2. Whether `CharacterBody2D` physics movement remains on `TestUnit` during the first extraction.
+3. Whether `milestone_1.tscn` remains configured as the main scene during Milestone 3.
+4. The first Milestone 3 economy-planning scope after architecture closeout.
 
 ### Exit criteria for the review and cleanup phase
 
-- The user has approved or revised the cleanup decisions above.
-- Approved cleanup slices are implemented separately and pass headless checks.
-- The complete manual regression checklist passes without new Output/Debugger warnings.
+- The clearance-safe closeout fix is committed and pushed.
+- The validation runner reports 120 passed and zero failed checks.
+- The recorded representative manual pass remains warning/error free.
 - Documentation matches the committed and pushed repository.
+- The post-navigation decomposition plan is approved or explicitly deferred.
 - No unapproved architecture, navigation, economy, content, or presentation work is included.
-- The first navigation test cases and their approval gates are written clearly enough to implement one bounded slice.
+- The approved decomposition boundary is written clearly enough to implement one bounded, reversible slice.
 
 ### Precise next task
 
-After approval, implement **Milestone 2 Cleanup Slice 1 only**: separate simulation discovery from `selectable_units` with a neutral `test_units` group, add a clear footprint-fallback diagnostic without changing fallback behavior, and run the full Milestone 2 regression checklist. Do not implement navigation in that task.
+After committing the closeout fix, create **`TEST_UNIT_DECOMPOSITION_PLAN.md` only**. Map the current responsibilities and propose a narrow navigation/recovery extraction with explicit ownership, APIs, staging, regression requirements, and approval gates. Do not refactor code or begin economy in that task.

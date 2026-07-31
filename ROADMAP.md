@@ -39,17 +39,17 @@ Implemented and committed:
 
 Implemented and committed navigation checkpoints:
 
-- Navigation Slice 5B: deterministic chokepoint holding, priority, queueing, and yielding.
+- Navigation Slices 1–6: static-obstacle routing, destination validation, path simplification, combat routing, distinct group destinations, chokepoint queueing, and bounded stuck recovery.
 
 Active:
 
-- Navigation Slice 6: measured progress, bounded route recalculation, and explicit stuck failure.
+- Milestone 2 closeout: clearance-safe routed separation, regression documentation, and the post-navigation `TestUnit` architecture gate.
 
 Still required to complete the milestone:
 
-- Manual regression verification and commit of active slices.
-- Technical-foundation review and cleanup.
-- Approval of whether focused automated validation is warranted.
+- Commit of the clearance-safe separation closeout fix.
+- Approval of the focused `TestUnit` decomposition boundary before economy work.
+- Decision about which technical scene becomes the regular Milestone 3 sandbox.
 
 ## Milestone 3: Small playable loop — Planned
 

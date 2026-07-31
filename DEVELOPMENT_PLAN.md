@@ -27,9 +27,9 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Navigation Slice 6 — bounded stuck detection and recovery
-- **Last committed checkpoint:** Navigation Slice 5B — chokepoint holding, priority, queueing, and yielding
-- **Current playable state:** one bounded interaction/combat test map plus a separate navigation arena with static-obstacle routing, destination validation, simplified routes, navigation-based combat approach, distinct group destinations, chokepoint queueing, and active bounded recovery work
+- **Active work:** Milestone 2 closeout — regression findings, clearance-safe routed separation, and architecture decision
+- **Last committed checkpoint:** Navigation Slice 6 — bounded stuck detection and recovery
+- **Current playable state:** one bounded interaction/combat test map plus a separate navigation arena with static-obstacle routing, destination validation, simplified routes, navigation-based combat approach, distinct group destinations, chokepoint queueing, bounded stuck recovery, and clearance-safe local separation
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
 
 ## Milestone status
@@ -107,17 +107,17 @@ Cleanup Slice 2 is committed. It adds a repository-native GDScript runner for de
 godot --headless --path . --script res://tests/run_validation.gd
 ```
 
-The cleanup phase remains open only for the full manual interaction regression and any cleanup justified by navigation results.
+The representative manual interaction and navigation regression was completed on 2026-07-31. It exposed one real navigation defect: local friendly separation could move a routed unit across the map's clearance boundary. The current closeout change constrains separated route steps to clearance-valid segments, falls back to the command-only step when necessary, and adds a live four-unit regression fixture. The cleanup phase remains open until this change is committed and the post-navigation `TestUnit` decomposition decision is approved.
 
-## Active planning: Navigation architecture
+## Completed planning: Navigation architecture
 
-`NAVIGATION_ARCHITECTURE_PLAN.md` is the active planning document for obstacle routing, destination validity, group movement, congestion, stuck recovery, replanning, combat approach, test fixtures, and quality metrics. It does not authorize navigation implementation.
+`NAVIGATION_ARCHITECTURE_PLAN.md` records the approved architecture for obstacle routing, destination validity, group movement, congestion, stuck recovery, replanning, combat approach, test fixtures, and quality metrics.
 
 Approved principle: the game will deliberately use modest on-screen unit counts so navigation, group movement, recovery, and tactical AI can prioritize quality over maximum throughput. Higher CPU cost is acceptable when it produces meaningfully better behavior; optimization must not prematurely weaken route quality, reliability, or recovery.
 
 Navigation priorities are correctness and reliability, route quality, congestion/deadlock handling, responsive replanning, and only then performance optimization.
 
-## Active implementation: Navigation Slice 6
+## Completed implementation: Navigation Slice 6
 
 Navigation Slice 1 established the separately run geometric arena at `scenes/main/navigation_test.tscn`, its map-owned clearance-aware 32-pixel `AStarGrid2D`, one-unit ground routes, per-unit waypoint following, and temporary path/grid diagnostics.
 
@@ -132,7 +132,9 @@ Navigation Slice 5 is divided into two checkpoints:
 - **Slice 5A — committed:** stable `NodePath` ordering, distinct deterministic group destination cells, and individual routes for every selected unit.
 - **Slice 5B — committed:** a map-owned one-cell fixture, valid holding points, passage reservation, deterministic command/unit priority, queueing, and yielding.
 
-Navigation Slice 6 is active in the working tree. A focused recovery tracker observes expected route progress in 1.5-second windows, requires at least four pixels of displacement or waypoint-distance reduction, excludes intentional chokepoint waiting, refreshes local state once, recalculates the route at most twice, then stops with an explicit visible failure. Recovery counts and reasons remain available through temporary debug feedback and concise diagnostics.
+Navigation Slice 6 is committed. A focused recovery tracker observes expected route progress in 1.5-second windows, requires at least four pixels of displacement or waypoint-distance reduction, excludes intentional chokepoint waiting, refreshes local state once, recalculates the route at most twice, then stops with an explicit visible failure. Recovery counts and reasons remain available through temporary debug feedback and concise diagnostics.
+
+The subsequent manual regression found that local separation could propose a step outside the static navigation clearance boundary. The active closeout fix validates each separated routed step against the navigation map, falls back to the command-only step when that remains valid, and otherwise holds position. A live four-unit route fixture now verifies both clearance and completion without false terminal recovery.
 
 The configured project main scene retains legacy direct combat approach. Nearby alternate-goal search, topology-driven replanning, dynamic obstacles, automatic targeting, and attack-move remain deferred.
 
@@ -154,7 +156,7 @@ The next phase should consolidate the technical prototype before adding broad co
 
 ### 1. Milestone 2 review and cleanup
 
-Status: **Active — manual regression remains**
+Status: **Active — closeout fix and architecture gate remain**
 
 Dependencies:
 
@@ -163,49 +165,44 @@ Dependencies:
 Work:
 
 - Keep the native validation runner current with navigation work.
-- Run the full manual regression checklist.
+- Preserve the completed representative interaction and navigation regression record.
 - Review warnings, node ownership, naming, and temporary debug visuals.
 - Remove or explicitly retain temporary prototype-only feedback.
 - Confirm documentation matches the committed repository.
-- Decide whether the current `TestUnit` has become too broad and needs focused components before additional systems are added.
+- Plan a focused `TestUnit` decomposition before additional systems are added. Navigation has now established concrete route, cancellation, progress, recovery, and failure contracts, and `test_unit.gd` has grown to roughly 1,400 lines.
 
 Approval gates:
 
-- Whether to refactor `TestUnit` now or defer until a second unit category exists.
-- Whether to add narrow repository-native automated checks for definition validation, damage/death, and movement state.
+- The exact first extraction boundary for `TestUnit`; the default recommendation is navigation/route execution and recovery state, not a broad component rewrite.
 - Whether the technical test scene remains the main scene during Milestone 3.
 
 Exit criteria:
 
 - Milestone 2 foundation is stable, documented, warning-free, and easy to extend.
 
-### 2. Spatial scale and navigation requirements
+### 2. Navigation foundation and spatial scale
 
-Status: **Active — Slice 6 implementation**
+Status: **Navigation complete through Slice 6; spatial-scale decisions deferred until their first consumers**
 
-Dependencies:
+Completed work:
 
-- Milestone 2 review complete.
+- Approved and implemented the clearance-aware 32-pixel `AStarGrid2D` architecture in a separate regression arena.
+- Added open ground, large obstacles, invalid destinations, edge cases, a one-cell chokepoint, group routes, combat approach, and bounded recovery.
+- Kept provisional scale local to the generic 48 × 48 test footprint and navigation fixtures rather than treating it as final infantry or vehicle scale.
 
-Work:
+Deferred work:
 
-- Review and approve or revise `NAVIGATION_ARCHITECTURE_PLAN.md`.
-- Define provisional world scale for infantry squads, buggies, rovers, drones, buildings, weapon ranges, and camera framing.
-- Build a repeatable combat/navigation test arena with open ground and simple obstacles.
-- Document required movement behavior around static obstacles and narrow spaces.
-- Choose the smallest appropriate pathfinding approach only after the test cases are defined.
+- Define provisional world scale for infantry squads, buggies, rovers, drones, buildings, weapon ranges, and camera framing when the first real category or building prototype needs it.
 
 Approval gates:
 
 - Top-down versus slightly angled battlefield presentation.
-- Provisional unit and building footprints.
-- Navigation grid/cell scale.
+- Provisional infantry-squad, vehicle, and building footprints.
 - Whether infantry squads and vehicles share one movement layer initially.
-- Pathfinding technology and the boundary between global routing and local separation.
 
 Exit criteria:
 
-- Units can reach valid destinations around representative static obstacles without severe deadlocks or overlap.
+- Units can reach valid destinations around representative static obstacles without severe deadlocks or overlap. **Satisfied for the current generic footprint and fixtures.**
 
 ### 3. Economy prototype plan
 

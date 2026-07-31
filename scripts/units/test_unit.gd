@@ -1023,8 +1023,42 @@ func _move_with_separation(
 		else minf(maximum_speed, definition.movement_speed)
 	)
 	velocity = movement_direction * movement_speed * movement_speed_scale
+	var movement_start := global_position
+	if _is_following_ground_route and _ground_navigation_map != null:
+		var physics_delta := get_physics_process_delta_time()
+		if physics_delta > 0.0:
+			var separated_endpoint := _clamp_to_map_bounds(
+				movement_start + velocity * physics_delta
+			)
+			var command_endpoint := movement_start
+			if not command_direction.is_zero_approx():
+				command_endpoint = _clamp_to_map_bounds(
+					movement_start
+					+ command_direction.normalized() * movement_speed * physics_delta
+				)
+			var safe_endpoint := choose_navigation_safe_endpoint(
+				_ground_navigation_map,
+				movement_start,
+				separated_endpoint,
+				command_endpoint
+			)
+			if safe_endpoint.is_equal_approx(movement_start):
+				velocity = Vector2.ZERO
+				return false
+			velocity = (safe_endpoint - movement_start) / physics_delta
 	move_and_slide()
 	global_position = _clamp_to_map_bounds(global_position)
+	if (
+		_is_following_ground_route
+		and _ground_navigation_map != null
+		and not _ground_navigation_map.is_world_segment_navigable(
+			movement_start,
+			global_position
+		)
+	):
+		global_position = movement_start
+		velocity = Vector2.ZERO
+		return false
 	return true
 
 
@@ -1201,6 +1235,27 @@ static func calculate_footprint_half_extents(
 		var circle_shape := shape as CircleShape2D
 		return Vector2.ONE * circle_shape.radius * absolute_scale
 	return Vector2.ZERO
+
+
+static func choose_navigation_safe_endpoint(
+	navigation_map: NavigationTestMap,
+	start_position: Vector2,
+	separated_endpoint: Vector2,
+	command_endpoint: Vector2
+) -> Vector2:
+	if navigation_map == null:
+		return separated_endpoint
+	if navigation_map.is_world_segment_navigable(
+		start_position,
+		separated_endpoint
+	):
+		return separated_endpoint
+	if navigation_map.is_world_segment_navigable(
+		start_position,
+		command_endpoint
+	):
+		return command_endpoint
+	return start_position
 
 
 func get_footprint_half_extents() -> Vector2:
