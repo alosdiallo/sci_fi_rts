@@ -16,6 +16,12 @@ const DEAD_END_RIGHT := Rect2(480.0, 256.0, 64.0, 352.0)
 const DEAD_END_CAP := Rect2(224.0, 256.0, 320.0, 64.0)
 const NARROW_BARRIER_LEFT := Rect2(128.0, 1408.0, 320.0, 192.0)
 const NARROW_BARRIER_RIGHT := Rect2(480.0, 1408.0, 320.0, 192.0)
+const CHOKEPOINT_ID := 0
+const CHOKEPOINT_WALL_LEFT := Rect2(0.0, 1696.0, 960.0, 64.0)
+const CHOKEPOINT_WALL_RIGHT := Rect2(1056.0, 1696.0, 992.0, 64.0)
+const CHOKEPOINT_NORTH_HOLDING_POINT := Vector2(1008.0, 1648.0)
+const CHOKEPOINT_SOUTH_HOLDING_POINT := Vector2(1008.0, 1808.0)
+const CHOKEPOINT_PASSAGE_BOUNDS := Rect2(984.0, 1672.0, 48.0, 112.0)
 const DEFAULT_CLEARANCE_HALF_EXTENTS := Vector2(24.0, 24.0)
 const OBSTACLE_COLOR := Color("242730")
 const BLOCKED_CELL_COLOR := Color(0.85, 0.25, 0.2, 0.16)
@@ -85,6 +91,73 @@ func grid_to_world(cell: Vector2i) -> Vector2:
 
 func is_cell_navigable(cell: Vector2i) -> bool:
 	return _is_cell_in_bounds(cell) and not _astar_grid.is_point_solid(cell)
+
+
+func can_unit_enter_chokepoint(unit: TestUnit, chokepoint_id: int) -> bool:
+	if unit == null or chokepoint_id != CHOKEPOINT_ID:
+		return true
+
+	var waiting_units: Array[TestUnit] = []
+	for node: Node in get_tree().get_nodes_in_group(&"test_units"):
+		var candidate := node as TestUnit
+		if (
+			candidate == null
+			or not is_instance_valid(candidate)
+			or not candidate.is_inside_tree()
+			or not candidate.is_alive()
+			or candidate.team_id != unit.team_id
+		):
+			continue
+		if (
+			candidate != unit
+			and candidate.holds_navigation_chokepoint_reservation(chokepoint_id)
+		):
+			return false
+		if candidate.is_waiting_for_navigation_chokepoint(chokepoint_id):
+			waiting_units.append(candidate)
+
+	if not waiting_units.has(unit):
+		waiting_units.append(unit)
+	waiting_units.sort_custom(_chokepoint_unit_precedes)
+	return waiting_units[0] == unit
+
+
+func has_position_cleared_chokepoint(
+	world_position: Vector2,
+	chokepoint_id: int,
+	entry_side: int
+) -> bool:
+	if chokepoint_id != CHOKEPOINT_ID or entry_side == 0:
+		return true
+	if entry_side < 0:
+		return world_position.y >= CHOKEPOINT_SOUTH_HOLDING_POINT.y
+	return world_position.y <= CHOKEPOINT_NORTH_HOLDING_POINT.y
+
+
+static func chokepoint_priority_precedes(
+	first_command_sequence: int,
+	first_priority: int,
+	first_path: String,
+	second_command_sequence: int,
+	second_priority: int,
+	second_path: String
+) -> bool:
+	if first_command_sequence != second_command_sequence:
+		return first_command_sequence < second_command_sequence
+	if first_priority != second_priority:
+		return first_priority < second_priority
+	return first_path < second_path
+
+
+func _chokepoint_unit_precedes(first: TestUnit, second: TestUnit) -> bool:
+	return chokepoint_priority_precedes(
+		first.get_navigation_command_sequence(),
+		first.get_navigation_priority(),
+		String(first.get_path()),
+		second.get_navigation_command_sequence(),
+		second.get_navigation_priority(),
+		String(second.get_path())
+	)
 
 
 func request_navigation(
@@ -610,7 +683,43 @@ func _complete_success_result(
 	for index in range(1, cell_path.size()):
 		result.raw_path.append(grid_to_world(cell_path[index]))
 	result.path = simplify_world_path(result.requested_start, result.raw_path)
+	_apply_chokepoint_metadata(result)
 	return result
+
+
+func _apply_chokepoint_metadata(result: NavigationPathResult) -> void:
+	var starts_north := result.requested_start.y < CHOKEPOINT_WALL_LEFT.position.y
+	var starts_south := result.requested_start.y > CHOKEPOINT_WALL_LEFT.end.y
+	var ends_north := result.accepted_destination.y < CHOKEPOINT_WALL_LEFT.position.y
+	var ends_south := result.accepted_destination.y > CHOKEPOINT_WALL_LEFT.end.y
+	if not ((starts_north and ends_south) or (starts_south and ends_north)):
+		return
+
+	result.chokepoint_id = CHOKEPOINT_ID
+	result.chokepoint_entry_side = -1 if starts_north else 1
+	result.chokepoint_holding_point = (
+		CHOKEPOINT_NORTH_HOLDING_POINT
+		if starts_north
+		else CHOKEPOINT_SOUTH_HOLDING_POINT
+	)
+	var holding_index := result.raw_path.find(result.chokepoint_holding_point)
+	if holding_index < 0:
+		result.chokepoint_id = -1
+		result.chokepoint_holding_point = Vector2.ZERO
+		result.chokepoint_entry_side = 0
+		return
+
+	var before_holding := PackedVector2Array()
+	for index in range(holding_index + 1):
+		before_holding.append(result.raw_path[index])
+	var after_holding := PackedVector2Array()
+	for index in range(holding_index + 1, result.raw_path.size()):
+		after_holding.append(result.raw_path[index])
+
+	result.path = simplify_world_path(result.requested_start, before_holding)
+	result.path.append_array(
+		simplify_world_path(result.chokepoint_holding_point, after_holding)
+	)
 
 
 func _find_reachable_projection(
@@ -663,6 +772,8 @@ func _get_static_obstacles() -> Array[Rect2]:
 		DEAD_END_CAP,
 		NARROW_BARRIER_LEFT,
 		NARROW_BARRIER_RIGHT,
+		CHOKEPOINT_WALL_LEFT,
+		CHOKEPOINT_WALL_RIGHT,
 	]
 
 

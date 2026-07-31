@@ -561,6 +561,75 @@ func _check_navigation_grid() -> void:
 		"valid near-edge destination was rejected"
 	)
 
+	var chokepoint_center_cell := navigation_map.world_to_grid(Vector2(1008.0, 1712.0))
+	_expect_true(
+		"navigation chokepoint exposes one clearance-valid lane",
+		navigation_map.is_cell_navigable(chokepoint_center_cell)
+		and not navigation_map.is_cell_navigable(
+			chokepoint_center_cell + Vector2i(-1, 0)
+		)
+		and not navigation_map.is_cell_navigable(
+			chokepoint_center_cell + Vector2i(1, 0)
+		),
+		"chokepoint was blocked or wider than its approved one-cell lane"
+	)
+	_expect_true(
+		"navigation cross-wall route records north holding point",
+		edge_result.has_chokepoint()
+		and edge_result.chokepoint_id == NavigationTestMap.CHOKEPOINT_ID
+		and edge_result.chokepoint_entry_side == -1
+		and edge_result.chokepoint_holding_point.is_equal_approx(
+			NavigationTestMap.CHOKEPOINT_NORTH_HOLDING_POINT
+		)
+		and edge_result.path.has(NavigationTestMap.CHOKEPOINT_NORTH_HOLDING_POINT),
+		"north-to-south route omitted valid chokepoint metadata or holding point"
+	)
+	var reverse_chokepoint_result := navigation_map.request_navigation(
+		Vector2(1400.0, 1900.0),
+		Vector2(1400.0, 1600.0)
+	)
+	_expect_true(
+		"navigation reverse route records south holding point",
+		reverse_chokepoint_result.is_success()
+		and reverse_chokepoint_result.has_chokepoint()
+		and reverse_chokepoint_result.chokepoint_entry_side == 1
+		and reverse_chokepoint_result.path.has(
+			NavigationTestMap.CHOKEPOINT_SOUTH_HOLDING_POINT
+		),
+		"south-to-north route omitted its holding point"
+	)
+	_expect_true(
+		"navigation chokepoint priority favors older command",
+		NavigationTestMap.chokepoint_priority_precedes(
+			3, 5, "/root/Z", 4, 0, "/root/A"
+		),
+		"newer command incorrectly outranked an older command"
+	)
+	_expect_true(
+		"navigation chokepoint priority favors stable unit order",
+		NavigationTestMap.chokepoint_priority_precedes(
+			7, 1, "/root/B", 7, 2, "/root/A"
+		)
+		and NavigationTestMap.chokepoint_priority_precedes(
+			7, 1, "/root/A", 7, 1, "/root/B"
+		),
+		"same-command priority or NodePath tie-break was unstable"
+	)
+	_expect_true(
+		"navigation chokepoint clearance detects passage exit",
+		not navigation_map.has_position_cleared_chokepoint(
+			Vector2(1008.0, 1712.0),
+			NavigationTestMap.CHOKEPOINT_ID,
+			-1
+		)
+		and navigation_map.has_position_cleared_chokepoint(
+			NavigationTestMap.CHOKEPOINT_SOUTH_HOLDING_POINT,
+			NavigationTestMap.CHOKEPOINT_ID,
+			-1
+		),
+		"entry reservation did not remain active through the passage"
+	)
+
 	var narrow_gap_cell := navigation_map.world_to_grid(Vector2(464.0, 1504.0))
 	_expect_true(
 		"navigation current footprint cannot enter narrow gap",

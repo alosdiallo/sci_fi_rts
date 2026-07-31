@@ -27,9 +27,9 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Navigation Slice 5A — deterministic group destinations and individual routes
-- **Last committed checkpoint:** Navigation Slice 4 — explicit-target combat routing
-- **Current playable state:** one bounded interaction/combat test map plus a separate navigation arena with static-obstacle routing, destination validation, simplified routes, navigation-based combat approach, and active group-destination work
+- **Active work:** Navigation Slice 5B — chokepoint holding, priority, queueing, and yielding
+- **Last committed checkpoint:** Navigation Slice 5A — deterministic group destinations and individual routes
+- **Current playable state:** one bounded interaction/combat test map plus a separate navigation arena with static-obstacle routing, destination validation, simplified routes, navigation-based combat approach, distinct group destinations, and active chokepoint queueing work
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
 
 ## Milestone status
@@ -117,7 +117,7 @@ Approved principle: the game will deliberately use modest on-screen unit counts 
 
 Navigation priorities are correctness and reliability, route quality, congestion/deadlock handling, responsive replanning, and only then performance optimization.
 
-## Active implementation: Navigation Slice 5A
+## Active implementation: Navigation Slice 5B
 
 Navigation Slice 1 established the separately run geometric arena at `scenes/main/navigation_test.tscn`, its map-owned clearance-aware 32-pixel `AStarGrid2D`, one-unit ground routes, per-unit waypoint following, and temporary path/grid diagnostics.
 
@@ -129,10 +129,10 @@ Navigation Slice 4 routes explicit hostile-target commands in the navigation are
 
 Navigation Slice 5 is divided into two checkpoints:
 
-- **Slice 5A — active:** stable `NodePath` ordering, distinct deterministic group destination cells, and individual routes for every selected unit.
-- **Slice 5B — planned:** chokepoint holding points, deterministic priority, queueing, and yielding.
+- **Slice 5A — committed:** stable `NodePath` ordering, distinct deterministic group destination cells, and individual routes for every selected unit.
+- **Slice 5B — active:** a map-owned one-cell fixture, valid holding points, passage reservation, deterministic command/unit priority, queueing, and yielding.
 
-The configured project main scene retains legacy direct combat approach. Chokepoint yielding, stuck recovery, general replanning, dynamic obstacles, automatic targeting, and attack-move remain deferred.
+The configured project main scene retains legacy direct combat approach. Stuck escalation, general replanning, dynamic obstacles, automatic targeting, and attack-move remain deferred.
 
 Manual launch:
 
@@ -179,7 +179,7 @@ Exit criteria:
 
 ### 2. Spatial scale and navigation requirements
 
-Status: **Active — Slice 5A implementation**
+Status: **Active — Slice 5B implementation**
 
 Dependencies:
 

@@ -1,6 +1,8 @@
 class_name NavigationCommandController
 extends UnitCommandController
 
+var _navigation_command_sequence := 0
+
 
 func _issue_target_command(clicked_unit: TestUnit) -> void:
 	var navigation_map := test_map as NavigationTestMap
@@ -41,6 +43,8 @@ func _issue_movement_command(world_position: Vector2) -> void:
 		start_positions,
 		world_position
 	)
+	_navigation_command_sequence += 1
+	var command_sequence := _navigation_command_sequence
 	var issued_route := false
 	var had_failure := false
 	for unit_index in range(selected_units.size()):
@@ -70,7 +74,13 @@ func _issue_movement_command(world_position: Vector2) -> void:
 				world_position,
 				result.accepted_destination,
 				result.status,
-				result.raw_path
+				result.raw_path,
+				navigation_map,
+				command_sequence,
+				unit_index,
+				result.chokepoint_id,
+				result.chokepoint_holding_point,
+				result.chokepoint_entry_side
 			)
 		print(
 			(

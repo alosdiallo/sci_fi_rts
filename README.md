@@ -18,7 +18,7 @@ The repository is currently an early technical prototype. Its generic test scene
 
 Milestone 1 is complete. The current prototype includes a bounded test map, camera controls, selection, direct movement, data-driven generic units, health, explicit hostile targeting, cooldown-based instant-hit combat, death cleanup, attack approach, footprint-aware bounds, and basic friendly separation.
 
-Milestone 2 is active. A separate technical arena now validates navigation around static obstacles, destination failures, simplified paths, combat approach, and deterministic group destinations. Chokepoint yielding, stuck recovery, economy, buildings, production, final faction units, campaign missions, final art, and audio are not implemented.
+Milestone 2 is active. A separate technical arena now validates navigation around static obstacles, destination failures, simplified paths, combat approach, deterministic group destinations, and one-cell chokepoint queueing. Stuck recovery, economy, buildings, production, final faction units, campaign missions, final art, and audio are not implemented.
 
 See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for current status, dependencies, approval gates, and next steps; [GAME_DESIGN.md](GAME_DESIGN.md) for design boundaries; and [HANDOFF.md](HANDOFF.md) for a concise session handoff.
 

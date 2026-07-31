@@ -39,11 +39,11 @@ Implemented and committed:
 
 Active:
 
-- Navigation Slice 5A: deterministic distinct group destinations and individual routes.
+- Navigation Slice 5B: deterministic chokepoint holding, priority, queueing, and yielding.
 
 Still required to complete the milestone:
 
-- Complete group chokepoint queueing/yielding and bounded stuck recovery.
+- Complete bounded stuck detection and recovery.
 - Manual regression verification and commit of active slices.
 - Technical-foundation review and cleanup.
 - Approval of whether focused automated validation is warranted.

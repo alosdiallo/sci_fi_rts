@@ -2,7 +2,7 @@
 
 ## Project
 
-**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 cleanup still awaits full manual regression, while navigation implementation has reached group movement.
+**Red Dust, Cold Iron** is the working title of an early technical-prototype Godot project for a classic 2D pixel-art science-fiction RTS inspired mechanically by late-1990s RTS games such as *Dune 2000*. Milestone 1 is complete. Milestone 2 cleanup still awaits full manual regression, while navigation implementation has reached chokepoint queueing.
 
 ## Confirmed
 
@@ -48,19 +48,20 @@
 - Navigation Slice 2 adds explicit typed navigation results, reachability-aware bounded projection, deterministic command rejection that preserves prior state, expanded destination fixtures, and reason-specific temporary feedback.
 - Navigation Slice 3 adds deterministic line-of-sight waypoint reduction, conservative supercover-style segment validation, smoother intermediate-waypoint transitions, raw-versus-simplified path drawing, and per-command route metrics.
 - Navigation Slice 4 routes explicitly targeted hostiles in the navigation arena to reachable deterministic firing positions, refreshes on material target or slot changes, and reports unreachable combat positions without direct-movement fallback.
+- Navigation Slice 5A assigns stable, distinct destination cells and individual routes to selected groups.
 - `scenes/main/milestone_1.tscn` as the project main scene.
 
 Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing is complete. Slice 4 was manually accepted, committed, and pushed.
 
 ## Active work
 
-Navigation Slice 5A is active in the working tree. It assigns selected units stable `NodePath` order, distinct nearby destination cells, and individual routes. The navigation arena now contains four team-one group units for open-space and obstacle-detour tests. Chokepoint holding points, queueing, and yielding are reserved for Slice 5B.
+Navigation Slice 5B is active in the working tree. It adds a one-cell map fixture, north/south holding points, passage reservation, stable command/unit priority, and visible waiting feedback. A unit that receives entry keeps passage priority until it clears the far holding point. Bounded stuck escalation remains Slice 6.
 
-Open `scenes/main/navigation_test.tscn` to box-select two to four friendly units and issue open-space, obstacle-detour, and map-edge ground commands. Units should receive distinct final destinations and must not completely stack. The configured main scene remains unchanged and retains legacy direct combat approach.
+Open `scenes/main/navigation_test.tscn`, box-select two to four friendly units north of the lower wall, and command them south of it. Units should wait at the cyan/yellow holding marker and traverse the passage one at a time without permanent stacking. The configured main scene remains unchanged and retains legacy direct combat approach.
 
 Approved principle: modest on-screen unit counts permit navigation, group movement, recovery, and tactical AI to prioritize correctness and behavior quality over maximum throughput. Optimize only after route reliability, quality, congestion/deadlock handling, and replanning are sound.
 
-The native validation runner now also covers deterministic group offsets, distinct accepted destination cells, and repeatable group routes in addition to prior combat-navigation coverage. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
+The native validation runner now also covers the one-cell fixture, both holding directions, route metadata, deterministic priority, and reservation-clearance boundary in addition to prior group/combat-navigation coverage. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

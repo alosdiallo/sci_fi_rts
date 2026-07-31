@@ -33,6 +33,14 @@ var _last_navigation_result := NavigationPathResult.Status.NONE
 var _last_navigation_requested_destination := Vector2.ZERO
 var _accepted_navigation_destination := Vector2.ZERO
 var _last_navigation_was_projected := false
+var _ground_navigation_map: NavigationTestMap
+var _navigation_command_sequence := -1
+var _navigation_priority := 0
+var _navigation_chokepoint_id := -1
+var _navigation_chokepoint_holding_point := Vector2.ZERO
+var _navigation_chokepoint_entry_side := 0
+var _is_waiting_at_navigation_chokepoint := false
+var _navigation_chokepoint_entry_granted := false
 var _current_health := 0.0
 var _is_alive := false
 var _health_initialized := false
@@ -127,7 +135,13 @@ func set_movement_route(
 	requested_destination: Vector2 = Vector2.ZERO,
 	accepted_destination: Vector2 = Vector2.ZERO,
 	result_status: NavigationPathResult.Status = NavigationPathResult.Status.DIRECT,
-	raw_waypoints: PackedVector2Array = PackedVector2Array()
+	raw_waypoints: PackedVector2Array = PackedVector2Array(),
+	navigation_map: NavigationTestMap = null,
+	command_sequence: int = -1,
+	priority: int = 0,
+	chokepoint_id: int = -1,
+	chokepoint_holding_point: Vector2 = Vector2.ZERO,
+	chokepoint_entry_side: int = 0
 ) -> void:
 	if waypoints.is_empty():
 		return
@@ -137,7 +151,13 @@ func set_movement_route(
 		waypoints,
 		raw_waypoints,
 		map_bounds,
-		false
+		false,
+		navigation_map,
+		command_sequence,
+		priority,
+		chokepoint_id,
+		chokepoint_holding_point,
+		chokepoint_entry_side
 	)
 	_record_navigation_success(
 		result_status,
@@ -150,7 +170,13 @@ func _assign_navigation_route(
 	waypoints: PackedVector2Array,
 	raw_waypoints: PackedVector2Array,
 	map_bounds: Rect2,
-	is_combat_route: bool
+	is_combat_route: bool,
+	navigation_map: NavigationTestMap = null,
+	command_sequence: int = -1,
+	priority: int = 0,
+	chokepoint_id: int = -1,
+	chokepoint_holding_point: Vector2 = Vector2.ZERO,
+	chokepoint_entry_side: int = 0
 ) -> void:
 	_clear_ground_route()
 	_set_map_bounds(map_bounds)
@@ -162,6 +188,14 @@ func _assign_navigation_route(
 	_ground_waypoint_index = 0
 	_is_following_ground_route = true
 	_is_combat_navigation_route = is_combat_route
+	_ground_navigation_map = navigation_map
+	_navigation_command_sequence = command_sequence
+	_navigation_priority = priority
+	_navigation_chokepoint_id = chokepoint_id
+	_navigation_chokepoint_holding_point = chokepoint_holding_point
+	_navigation_chokepoint_entry_side = chokepoint_entry_side
+	_is_waiting_at_navigation_chokepoint = false
+	_navigation_chokepoint_entry_granted = false
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
 	queue_redraw()
@@ -230,6 +264,36 @@ func get_combat_resolved_firing_position() -> Vector2:
 
 func used_alternate_combat_firing_position() -> bool:
 	return _combat_used_alternate_firing_position
+
+
+func get_navigation_command_sequence() -> int:
+	return _navigation_command_sequence
+
+
+func get_navigation_priority() -> int:
+	return _navigation_priority
+
+
+func is_waiting_for_navigation_chokepoint(chokepoint_id: int) -> bool:
+	return (
+		_is_following_ground_route
+		and _navigation_chokepoint_id == chokepoint_id
+		and _is_waiting_at_navigation_chokepoint
+	)
+
+
+func holds_navigation_chokepoint_reservation(chokepoint_id: int) -> bool:
+	return (
+		_is_following_ground_route
+		and _ground_navigation_map != null
+		and _navigation_chokepoint_id == chokepoint_id
+		and _navigation_chokepoint_entry_granted
+		and not _ground_navigation_map.has_position_cleared_chokepoint(
+			global_position,
+			chokepoint_id,
+			_navigation_chokepoint_entry_side
+		)
+	)
 
 
 func _record_navigation_success(
@@ -693,6 +757,17 @@ func _move_toward_ground_route(delta: float) -> bool:
 			> definition.arrival_tolerance
 		):
 			break
+		if _should_wait_at_navigation_chokepoint():
+			_is_waiting_at_navigation_chokepoint = true
+			velocity = Vector2.ZERO
+			if not _ground_navigation_map.can_unit_enter_chokepoint(
+				self,
+				_navigation_chokepoint_id
+			):
+				queue_redraw()
+				return false
+			_is_waiting_at_navigation_chokepoint = false
+			_navigation_chokepoint_entry_granted = true
 		_ground_waypoint_index += 1
 
 	if _ground_waypoint_index >= _ground_waypoints.size():
@@ -726,6 +801,18 @@ func _move_toward_ground_route(delta: float) -> bool:
 	return false
 
 
+func _should_wait_at_navigation_chokepoint() -> bool:
+	return (
+		_ground_navigation_map != null
+		and _navigation_chokepoint_id >= 0
+		and not _navigation_chokepoint_entry_granted
+		and _ground_waypoint_index < _ground_waypoints.size()
+		and _ground_waypoints[_ground_waypoint_index].is_equal_approx(
+			_navigation_chokepoint_holding_point
+		)
+	)
+
+
 func _clear_ground_route() -> void:
 	_ground_waypoints = PackedVector2Array()
 	_raw_ground_waypoints = PackedVector2Array()
@@ -733,6 +820,14 @@ func _clear_ground_route() -> void:
 	_ground_waypoint_index = 0
 	_is_following_ground_route = false
 	_is_combat_navigation_route = false
+	_ground_navigation_map = null
+	_navigation_command_sequence = -1
+	_navigation_priority = 0
+	_navigation_chokepoint_id = -1
+	_navigation_chokepoint_holding_point = Vector2.ZERO
+	_navigation_chokepoint_entry_side = 0
+	_is_waiting_at_navigation_chokepoint = false
+	_navigation_chokepoint_entry_granted = false
 	queue_redraw()
 
 
@@ -976,6 +1071,19 @@ func _draw() -> void:
 		var final_destination := to_local(_ground_waypoints[_ground_waypoints.size() - 1])
 		draw_circle(active_waypoint, 7.0, Color("ff9f43"))
 		draw_circle(final_destination, 10.0, Color("9b6cff"), false, 3.0)
+		if _navigation_chokepoint_id >= 0:
+			var holding_point := to_local(_navigation_chokepoint_holding_point)
+			var holding_color := (
+				Color("ffcf4d")
+				if _is_waiting_at_navigation_chokepoint
+				else Color("8ad8ff")
+			)
+			draw_rect(
+				Rect2(holding_point - Vector2.ONE * 6.0, Vector2.ONE * 12.0),
+				holding_color,
+				false,
+				2.0
+			)
 
 	if (
 		_combat_navigation_map != null

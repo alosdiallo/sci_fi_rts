@@ -32,6 +32,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Navigation Slice 3: deterministic clearance-safe waypoint simplification, conservative corner-aware segment traversal, smoother waypoint transitions, raw-versus-simplified route debugging, route-quality metrics, and validation coverage.
 - Navigation Slice 4: navigation-based explicit-target approach, deterministic preferred and alternate firing positions, thresholded target/slot route refresh, unreachable-target failure state, combat-route diagnostics, and arena fixtures.
 - Navigation Slice 5A: stable group ordering, deterministic distinct final destinations, individual routes, four-unit arena fixtures, and native validation coverage.
+- Navigation Slice 5B: one-cell chokepoint fixture, bidirectional holding points, passage reservation, stable queue priority, yielding, waiting diagnostics, and native validation coverage.
 
 ### Changed
 

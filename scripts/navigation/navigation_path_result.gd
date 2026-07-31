@@ -21,6 +21,13 @@ var accepted_destination := Vector2.ZERO
 var desired_firing_position := Vector2.ZERO
 var raw_path := PackedVector2Array()
 var path := PackedVector2Array()
+var chokepoint_id := -1
+var chokepoint_holding_point := Vector2.ZERO
+var chokepoint_entry_side := 0
+
+
+func has_chokepoint() -> bool:
+	return chokepoint_id >= 0 and chokepoint_entry_side != 0
 
 
 func is_success() -> bool:
