@@ -813,6 +813,22 @@ func _draw_failure_marker(result: NavigationPathResult) -> void:
 				]
 			)
 			draw_polyline(triangle, INVALID_START_COLOR, 4.0)
+		NavigationPathResult.Status.STUCK_RECOVERY_EXHAUSTED:
+			draw_rect(
+				Rect2(
+					marker_position - Vector2.ONE * marker_size,
+					Vector2.ONE * marker_size * 2.0
+				),
+				NO_VALID_DESTINATION_COLOR,
+				false,
+				4.0
+			)
+			draw_line(
+				marker_position - Vector2(marker_size, marker_size),
+				marker_position + Vector2(marker_size, marker_size),
+				NO_VALID_DESTINATION_COLOR,
+				4.0
+			)
 
 
 func _is_cell_in_bounds(cell: Vector2i) -> bool:

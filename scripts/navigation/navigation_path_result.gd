@@ -12,6 +12,7 @@ enum Status {
 	ALTERNATE_FIRING_POSITION,
 	NO_FIRING_POSITION,
 	INVALID_TARGET,
+	STUCK_RECOVERY_EXHAUSTED,
 }
 
 var status: Status = Status.NONE
@@ -63,5 +64,7 @@ func get_reason_text() -> String:
 			return "no reachable firing position"
 		Status.INVALID_TARGET:
 			return "combat target is invalid or dead"
+		Status.STUCK_RECOVERY_EXHAUSTED:
+			return "stuck recovery budget exhausted"
 		_:
 			return "no navigation result"

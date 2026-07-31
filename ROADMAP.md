@@ -29,7 +29,7 @@ Current scope:
 - Separate definition data, runtime state, commands, and presentation.
 - Define deterministic update and combat conventions.
 - Validate health, targeting, combat, approach, bounds, and basic spacing with generic units.
-- Review the foundation before expanding into navigation, economy, or buildings.
+- Review the completed navigation foundation before expanding into economy or buildings.
 
 Implemented and committed:
 
@@ -37,13 +37,16 @@ Implemented and committed:
 - Health, damage, death, team IDs, explicit targeting, range, cooldowns, and deterministic instant-hit attacks.
 - Direct attack approach, moving-target tracking, footprint-aware map clamping, and basic friendly separation.
 
-Active:
+Implemented and committed navigation checkpoints:
 
 - Navigation Slice 5B: deterministic chokepoint holding, priority, queueing, and yielding.
 
+Active:
+
+- Navigation Slice 6: measured progress, bounded route recalculation, and explicit stuck failure.
+
 Still required to complete the milestone:
 
-- Complete bounded stuck detection and recovery.
 - Manual regression verification and commit of active slices.
 - Technical-foundation review and cleanup.
 - Approval of whether focused automated validation is warranted.

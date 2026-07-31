@@ -55,13 +55,13 @@ Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing 
 
 ## Active work
 
-Navigation Slice 5B is active in the working tree. It adds a one-cell map fixture, north/south holding points, passage reservation, stable command/unit priority, and visible waiting feedback. A unit that receives entry keeps passage priority until it clears the far holding point. Bounded stuck escalation remains Slice 6.
+Navigation Slice 5B is committed. Navigation Slice 6 is active in the working tree: route progress is measured over 1.5-second windows, intentional chokepoint waiting is excluded, recovery refreshes local movement once, performs at most two deterministic route recalculations, and then fails visibly instead of looping forever. A new command resets the prior recovery budget.
 
 Open `scenes/main/navigation_test.tscn`, box-select two to four friendly units north of the lower wall, and command them south of it. Units should wait at the cyan/yellow holding marker and traverse the passage one at a time without permanent stacking. The configured main scene remains unchanged and retains legacy direct combat approach.
 
 Approved principle: modest on-screen unit counts permit navigation, group movement, recovery, and tactical AI to prioritize correctness and behavior quality over maximum throughput. Optimize only after route reliability, quality, congestion/deadlock handling, and replanning are sound.
 
-The native validation runner now also covers the one-cell fixture, both holding directions, route metadata, deterministic priority, and reservation-clearance boundary in addition to prior group/combat-navigation coverage. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
+The native validation runner now also covers progress thresholds, intentional-wait exclusion, recovery escalation order, attempt limits, live route replanning, explicit terminal failure, and new-command reset in addition to prior group/chokepoint/combat-navigation coverage. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`. Manual navigation interaction and full Milestone 2 regression remain required.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

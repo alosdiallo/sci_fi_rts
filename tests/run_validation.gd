@@ -16,6 +16,7 @@ func _run_validation() -> void:
 	_check_unit_definition_validation()
 	_check_pure_calculations()
 	_check_footprint_calculations()
+	_check_navigation_recovery()
 	_check_navigation_grid()
 	_check_health_damage_hostility_and_targeting()
 
@@ -213,6 +214,92 @@ func _check_footprint_calculations() -> void:
 		"unsupported footprint shape fallback",
 		TestUnit.calculate_footprint_half_extents(CapsuleShape2D.new()),
 		Vector2.ZERO
+	)
+
+
+func _check_navigation_recovery() -> void:
+	_expect_true(
+		"navigation recovery accepts displacement as progress",
+		NavigationRecoveryTracker.has_meaningful_progress(
+			Vector2.ZERO,
+			Vector2(4.0, 0.0),
+			100.0,
+			100.0,
+			4.0
+		),
+		"four pixels of displacement was not recognized as progress"
+	)
+	_expect_true(
+		"navigation recovery accepts waypoint-distance reduction as progress",
+		NavigationRecoveryTracker.has_meaningful_progress(
+			Vector2.ZERO,
+			Vector2.ZERO,
+			100.0,
+			96.0,
+			4.0
+		),
+		"four pixels of waypoint progress was not recognized"
+	)
+	_expect_true(
+		"navigation recovery rejects sub-threshold motion",
+		not NavigationRecoveryTracker.has_meaningful_progress(
+			Vector2.ZERO,
+			Vector2(3.9, 0.0),
+			100.0,
+			96.1,
+			4.0
+		),
+		"sub-threshold movement was incorrectly treated as progress"
+	)
+
+	var progressing_tracker := NavigationRecoveryTracker.new(1.5, 4.0, 2)
+	progressing_tracker.begin_command(Vector2.ZERO, 100.0)
+	_expect_true(
+		"navigation recovery window resets after meaningful progress",
+		progressing_tracker.observe(1.5, Vector2(5.0, 0.0), 95.0)
+		== NavigationRecoveryTracker.Action.NONE
+		and progressing_tracker.get_recovery_events() == 0,
+		"normal route progress entered recovery"
+	)
+
+	var recovery_tracker := NavigationRecoveryTracker.new(1.5, 4.0, 2)
+	recovery_tracker.begin_command(Vector2.ZERO, 100.0)
+	_expect_true(
+		"navigation recovery first escalation refreshes local state",
+		recovery_tracker.observe(1.5, Vector2.ZERO, 100.0)
+		== NavigationRecoveryTracker.Action.REFRESH_LOCAL_STATE,
+		"first no-progress window skipped local refresh"
+	)
+	_expect_true(
+		"navigation recovery second escalation replans",
+		recovery_tracker.observe(1.5, Vector2.ZERO, 100.0)
+		== NavigationRecoveryTracker.Action.RECALCULATE_ROUTE
+		and recovery_tracker.get_replan_attempts() == 1,
+		"second no-progress window did not request the first replan"
+	)
+	_expect_true(
+		"navigation recovery replan attempts are bounded",
+		recovery_tracker.observe(1.5, Vector2.ZERO, 100.0)
+		== NavigationRecoveryTracker.Action.RECALCULATE_ROUTE
+		and recovery_tracker.get_replan_attempts() == 2,
+		"approved second route replan was not requested"
+	)
+	_expect_true(
+		"navigation recovery ends in explicit failure",
+		recovery_tracker.observe(1.5, Vector2.ZERO, 100.0)
+		== NavigationRecoveryTracker.Action.FAIL_ROUTE
+		and recovery_tracker.get_recovery_events() == 4,
+		"exhausted recovery budget did not fail explicitly"
+	)
+
+	var waiting_tracker := NavigationRecoveryTracker.new(1.5, 4.0, 2)
+	waiting_tracker.begin_command(Vector2.ZERO, 100.0)
+	_expect_true(
+		"navigation recovery excludes intentional waiting",
+		waiting_tracker.observe(30.0, Vector2.ZERO, 100.0, false)
+		== NavigationRecoveryTracker.Action.NONE
+		and waiting_tracker.get_recovery_events() == 0,
+		"intentional chokepoint waiting consumed recovery budget"
 	)
 
 
@@ -671,6 +758,64 @@ func _check_navigation_grid() -> void:
 			"navigation rejected command preserves prior route state",
 			false,
 			"could not instantiate TestUnit route fixture"
+		)
+
+	var recovery_unit := (
+		unit_scene.instantiate() as TestUnit if unit_scene != null else null
+	)
+	if recovery_unit != null:
+		recovery_unit.name = "RecoveryUnit"
+		recovery_unit.definition = load(STANDARD_DEFINITION_PATH) as UnitDefinition
+		recovery_unit.global_position = route_start
+		root.add_child(recovery_unit)
+		recovery_unit.set_physics_process(false)
+		recovery_unit.set_movement_route(
+			direct_result.path,
+			navigation_map.get_map_bounds(),
+			route_destination,
+			direct_result.accepted_destination,
+			direct_result.status,
+			direct_result.raw_path,
+			navigation_map
+		)
+		var stalled_waypoint_distance := route_start.distance_to(direct_result.path[0])
+		recovery_unit._handle_navigation_recovery(1.5, stalled_waypoint_distance)
+		recovery_unit._handle_navigation_recovery(1.5, stalled_waypoint_distance)
+		recovery_unit._handle_navigation_recovery(1.5, stalled_waypoint_distance)
+		recovery_unit._handle_navigation_recovery(1.5, stalled_waypoint_distance)
+		_expect_true(
+			"navigation stuck integration exhausts bounded recovery",
+			recovery_unit.has_navigation_recovery_failure()
+			and recovery_unit.get_navigation_replan_attempts() == 2
+			and recovery_unit.get_navigation_recovery_events() == 4
+			and recovery_unit.get_last_navigation_result()
+			== NavigationPathResult.Status.STUCK_RECOVERY_EXHAUSTED
+			and not recovery_unit.is_ground_route_active(),
+			"stalled live route did not fail after refresh and two replans"
+		)
+		recovery_unit.set_movement_route(
+			direct_result.path,
+			navigation_map.get_map_bounds(),
+			route_destination,
+			direct_result.accepted_destination,
+			direct_result.status,
+			direct_result.raw_path,
+			navigation_map
+		)
+		_expect_true(
+			"navigation new command resets prior recovery failure",
+			not recovery_unit.has_navigation_recovery_failure()
+			and recovery_unit.get_navigation_recovery_events() == 0
+			and recovery_unit.get_navigation_replan_attempts() == 0,
+			"new route inherited exhausted recovery state"
+		)
+		recovery_unit.free()
+		navigation_map.clear_navigation_failure()
+	else:
+		_expect_true(
+			"navigation stuck integration fixture instantiates",
+			false,
+			"could not instantiate recovery TestUnit"
 		)
 
 	var standard_definition := load(STANDARD_DEFINITION_PATH) as UnitDefinition

@@ -9,6 +9,9 @@ const APPROACH_TARGET_REFRESH_DISTANCE_SQUARED := (
 )
 const SEPARATION_DEAD_ZONE := 0.5
 const MAX_SEPARATION_CONTRIBUTION := 0.35
+const NAVIGATION_PROGRESS_WINDOW := 1.5
+const NAVIGATION_MINIMUM_PROGRESS := 4.0
+const NAVIGATION_MAX_REPLAN_ATTEMPTS := 2
 
 @export var definition: UnitDefinition
 @export var team_id: int = 0
@@ -41,6 +44,12 @@ var _navigation_chokepoint_holding_point := Vector2.ZERO
 var _navigation_chokepoint_entry_side := 0
 var _is_waiting_at_navigation_chokepoint := false
 var _navigation_chokepoint_entry_granted := false
+var _navigation_recovery := NavigationRecoveryTracker.new(
+	NAVIGATION_PROGRESS_WINDOW,
+	NAVIGATION_MINIMUM_PROGRESS,
+	NAVIGATION_MAX_REPLAN_ATTEMPTS
+)
+var _navigation_recovery_failed := false
 var _current_health := 0.0
 var _is_alive := false
 var _health_initialized := false
@@ -176,9 +185,10 @@ func _assign_navigation_route(
 	priority: int = 0,
 	chokepoint_id: int = -1,
 	chokepoint_holding_point: Vector2 = Vector2.ZERO,
-	chokepoint_entry_side: int = 0
+	chokepoint_entry_side: int = 0,
+	preserve_recovery_state: bool = false
 ) -> void:
-	_clear_ground_route()
+	_clear_ground_route(not preserve_recovery_state)
 	_set_map_bounds(map_bounds)
 	_ground_waypoints = waypoints.duplicate()
 	_raw_ground_waypoints = raw_waypoints.duplicate()
@@ -198,6 +208,18 @@ func _assign_navigation_route(
 	_navigation_chokepoint_entry_granted = false
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
+	_navigation_recovery_failed = false
+	var first_waypoint_distance := global_position.distance_to(_ground_waypoints[0])
+	if preserve_recovery_state:
+		_navigation_recovery.restart_observation(
+			global_position,
+			first_waypoint_distance
+		)
+	else:
+		_navigation_recovery.begin_command(
+			global_position,
+			first_waypoint_distance
+		)
 	queue_redraw()
 
 
@@ -294,6 +316,22 @@ func holds_navigation_chokepoint_reservation(chokepoint_id: int) -> bool:
 			_navigation_chokepoint_entry_side
 		)
 	)
+
+
+func get_navigation_recovery_events() -> int:
+	return _navigation_recovery.get_recovery_events()
+
+
+func get_navigation_replan_attempts() -> int:
+	return _navigation_recovery.get_replan_attempts()
+
+
+func get_navigation_recovery_action() -> NavigationRecoveryTracker.Action:
+	return _navigation_recovery.get_last_action()
+
+
+func has_navigation_recovery_failure() -> bool:
+	return _navigation_recovery_failed
 
 
 func _record_navigation_success(
@@ -593,9 +631,11 @@ func _should_refresh_combat_navigation_route() -> bool:
 	return false
 
 
-func _refresh_combat_navigation_route() -> void:
+func _refresh_combat_navigation_route(
+	preserve_recovery_state: bool = false
+) -> bool:
 	if _combat_navigation_map == null or not has_valid_attack_target():
-		return
+		return false
 
 	var slot_state := _get_attack_slot_state()
 	var slot_angle := calculate_attack_slot_angle(slot_state.x, slot_state.y)
@@ -626,7 +666,7 @@ func _refresh_combat_navigation_route() -> void:
 			% [name, get_path(), _attack_target.get_path(), result.get_reason_text()]
 		)
 		queue_redraw()
-		return
+		return false
 
 	_combat_navigation_failed = false
 	_combat_navigation_failure_status = NavigationPathResult.Status.NONE
@@ -635,7 +675,14 @@ func _refresh_combat_navigation_route() -> void:
 		result.path,
 		result.raw_path,
 		_combat_navigation_map.get_map_bounds(),
-		true
+		true,
+		_combat_navigation_map,
+		-1,
+		0,
+		-1,
+		Vector2.ZERO,
+		0,
+		preserve_recovery_state
 	)
 	print(
 		(
@@ -650,6 +697,7 @@ func _refresh_combat_navigation_route() -> void:
 			result.path.size(),
 		]
 	)
+	return true
 
 
 func _get_preferred_firing_distance() -> float:
@@ -751,6 +799,7 @@ func _move_toward_ground_route(delta: float) -> bool:
 		_clear_ground_route()
 		return true
 
+	var advanced_waypoint := false
 	while _ground_waypoint_index < _ground_waypoints.size():
 		if (
 			global_position.distance_to(_ground_waypoints[_ground_waypoint_index])
@@ -764,11 +813,13 @@ func _move_toward_ground_route(delta: float) -> bool:
 				self,
 				_navigation_chokepoint_id
 			):
+				_navigation_recovery.pause(global_position, 0.0)
 				queue_redraw()
 				return false
 			_is_waiting_at_navigation_chokepoint = false
 			_navigation_chokepoint_entry_granted = true
 		_ground_waypoint_index += 1
+		advanced_waypoint = true
 
 	if _ground_waypoint_index >= _ground_waypoints.size():
 		global_position = _clamp_to_map_bounds(_accepted_navigation_destination)
@@ -780,6 +831,11 @@ func _move_toward_ground_route(delta: float) -> bool:
 	var offset_to_waypoint := waypoint - global_position
 	var distance_to_waypoint := offset_to_waypoint.length()
 	var maximum_step := definition.movement_speed * delta
+	if advanced_waypoint:
+		_navigation_recovery.restart_observation(
+			global_position,
+			distance_to_waypoint
+		)
 
 	if distance_to_waypoint <= maximum_step:
 		global_position = _clamp_to_map_bounds(waypoint)
@@ -789,8 +845,17 @@ func _move_toward_ground_route(delta: float) -> bool:
 			global_position = _clamp_to_map_bounds(_accepted_navigation_destination)
 			_clear_ground_route()
 		else:
+			_navigation_recovery.restart_observation(
+				global_position,
+				global_position.distance_to(
+					_ground_waypoints[_ground_waypoint_index]
+				)
+			)
 			queue_redraw()
 		return _ground_waypoint_index >= _ground_waypoints.size()
+
+	if _handle_navigation_recovery(delta, distance_to_waypoint):
+		return false
 
 	var waypoint_speed := minf(
 		definition.movement_speed,
@@ -799,6 +864,107 @@ func _move_toward_ground_route(delta: float) -> bool:
 	_move_with_separation(offset_to_waypoint / distance_to_waypoint, waypoint_speed)
 	queue_redraw()
 	return false
+
+
+func _handle_navigation_recovery(
+	delta: float,
+	distance_to_waypoint: float
+) -> bool:
+	var action := _navigation_recovery.observe(
+		delta,
+		global_position,
+		distance_to_waypoint
+	)
+	if action == NavigationRecoveryTracker.Action.NONE:
+		return false
+
+	velocity = Vector2.ZERO
+	queue_redraw()
+	print(
+		"Navigation recovery for %s at %s: %s (event %d, replan %d/%d)."
+		% [
+			name,
+			get_path(),
+			NavigationRecoveryTracker.get_action_text(action),
+			_navigation_recovery.get_recovery_events(),
+			_navigation_recovery.get_replan_attempts(),
+			NAVIGATION_MAX_REPLAN_ATTEMPTS,
+		]
+	)
+	match action:
+		NavigationRecoveryTracker.Action.REFRESH_LOCAL_STATE:
+			return true
+		NavigationRecoveryTracker.Action.RECALCULATE_ROUTE:
+			_attempt_navigation_replan()
+			return true
+		NavigationRecoveryTracker.Action.FAIL_ROUTE:
+			_fail_stuck_navigation()
+			return true
+		_:
+			return false
+
+
+func _attempt_navigation_replan() -> bool:
+	if _ground_navigation_map == null:
+		return false
+	if _is_combat_navigation_route:
+		return _refresh_combat_navigation_route(true)
+
+	var navigation_map := _ground_navigation_map
+	var command_sequence := _navigation_command_sequence
+	var priority := _navigation_priority
+	var destination := _accepted_navigation_destination
+	var result := navigation_map.request_navigation(global_position, destination)
+	if not result.is_success():
+		return false
+	if result.path.is_empty():
+		global_position = _clamp_to_map_bounds(result.accepted_destination)
+		velocity = Vector2.ZERO
+		_clear_ground_route()
+		return true
+
+	_assign_navigation_route(
+		result.path,
+		result.raw_path,
+		navigation_map.get_map_bounds(),
+		false,
+		navigation_map,
+		command_sequence,
+		priority,
+		result.chokepoint_id,
+		result.chokepoint_holding_point,
+		result.chokepoint_entry_side,
+		true
+	)
+	_accepted_navigation_destination = result.accepted_destination
+	return true
+
+
+func _fail_stuck_navigation() -> void:
+	var navigation_map := _ground_navigation_map
+	var was_combat_route := _is_combat_navigation_route
+	var result := NavigationPathResult.new()
+	result.status = NavigationPathResult.Status.STUCK_RECOVERY_EXHAUSTED
+	result.requested_start = global_position
+	result.requested_destination = (
+		_combat_desired_firing_position
+		if was_combat_route
+		else _last_navigation_requested_destination
+	)
+	result.accepted_destination = _accepted_navigation_destination
+
+	velocity = Vector2.ZERO
+	_clear_ground_route(false)
+	_navigation_recovery_failed = true
+	_last_navigation_result = result.status
+	_last_navigation_was_projected = false
+	if was_combat_route:
+		_combat_navigation_failed = true
+		_combat_navigation_failure_status = result.status
+		_has_combat_navigation_request = true
+	if navigation_map != null:
+		navigation_map.show_navigation_failure(result)
+	queue_redraw()
 
 
 func _should_wait_at_navigation_chokepoint() -> bool:
@@ -813,7 +979,7 @@ func _should_wait_at_navigation_chokepoint() -> bool:
 	)
 
 
-func _clear_ground_route() -> void:
+func _clear_ground_route(reset_recovery_state: bool = true) -> void:
 	_ground_waypoints = PackedVector2Array()
 	_raw_ground_waypoints = PackedVector2Array()
 	_ground_route_start = Vector2.ZERO
@@ -828,6 +994,9 @@ func _clear_ground_route() -> void:
 	_navigation_chokepoint_entry_side = 0
 	_is_waiting_at_navigation_chokepoint = false
 	_navigation_chokepoint_entry_granted = false
+	if reset_recovery_state:
+		_navigation_recovery.reset()
+		_navigation_recovery_failed = false
 	queue_redraw()
 
 
@@ -1083,6 +1252,19 @@ func _draw() -> void:
 				holding_color,
 				false,
 				2.0
+			)
+
+	var recovery_events := _navigation_recovery.get_recovery_events()
+	if recovery_events > 0:
+		var recovery_color := (
+			Color("ff4d5e") if _navigation_recovery_failed else Color("ff9f43")
+		)
+		var visible_events := mini(recovery_events, 4)
+		for event_index in range(visible_events):
+			draw_circle(
+				Vector2(-9.0 + float(event_index) * 6.0, -50.0),
+				2.5,
+				recovery_color
 			)
 
 	if (
