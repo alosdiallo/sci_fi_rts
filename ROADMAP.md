@@ -43,11 +43,10 @@ Implemented and committed navigation checkpoints:
 
 Active:
 
-- Milestone 2 closeout: clearance-safe routed separation, regression documentation, and the post-navigation `TestUnit` architecture gate.
+- Milestone 2 closeout: approval of the focused post-navigation `TestUnit` decomposition plan.
 
 Still required to complete the milestone:
 
-- Commit of the clearance-safe separation closeout fix.
 - Approval of the focused `TestUnit` decomposition boundary before economy work.
 - Decision about which technical scene becomes the regular Milestone 3 sandbox.
 

@@ -27,8 +27,8 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Milestone 2 closeout — regression findings, clearance-safe routed separation, and architecture decision
-- **Last committed checkpoint:** Navigation Slice 6 — bounded stuck detection and recovery
+- **Active work:** Milestone 2 architecture gate — focused `TestUnit` decomposition planning
+- **Last committed checkpoint:** Milestone 2 navigation closeout (`87733ae`)
 - **Current playable state:** one bounded interaction/combat test map plus a separate navigation arena with static-obstacle routing, destination validation, simplified routes, navigation-based combat approach, distinct group destinations, chokepoint queueing, bounded stuck recovery, and clearance-safe local separation
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
 
@@ -107,7 +107,7 @@ Cleanup Slice 2 is committed. It adds a repository-native GDScript runner for de
 godot --headless --path . --script res://tests/run_validation.gd
 ```
 
-The representative manual interaction and navigation regression was completed on 2026-07-31. It exposed one real navigation defect: local friendly separation could move a routed unit across the map's clearance boundary. The current closeout change constrains separated route steps to clearance-valid segments, falls back to the command-only step when necessary, and adds a live four-unit regression fixture. The cleanup phase remains open until this change is committed and the post-navigation `TestUnit` decomposition decision is approved.
+The representative manual interaction and navigation regression was completed on 2026-07-31. It exposed one real navigation defect: local friendly separation could move a routed unit across the map's clearance boundary. The committed closeout fix constrains separated route steps to clearance-valid segments, falls back to the command-only step when necessary, and adds a live four-unit regression fixture. The cleanup phase remains open only for the post-navigation `TestUnit` decomposition decision.
 
 ## Completed planning: Navigation architecture
 
@@ -134,7 +134,7 @@ Navigation Slice 5 is divided into two checkpoints:
 
 Navigation Slice 6 is committed. A focused recovery tracker observes expected route progress in 1.5-second windows, requires at least four pixels of displacement or waypoint-distance reduction, excludes intentional chokepoint waiting, refreshes local state once, recalculates the route at most twice, then stops with an explicit visible failure. Recovery counts and reasons remain available through temporary debug feedback and concise diagnostics.
 
-The subsequent manual regression found that local separation could propose a step outside the static navigation clearance boundary. The active closeout fix validates each separated routed step against the navigation map, falls back to the command-only step when that remains valid, and otherwise holds position. A live four-unit route fixture now verifies both clearance and completion without false terminal recovery.
+The subsequent manual regression found that local separation could propose a step outside the static navigation clearance boundary. The committed closeout fix validates each separated routed step against the navigation map, falls back to the command-only step when that remains valid, and otherwise holds position. A live four-unit route fixture verifies both clearance and completion without false terminal recovery.
 
 The configured project main scene retains legacy direct combat approach. Nearby alternate-goal search, topology-driven replanning, dynamic obstacles, automatic targeting, and attack-move remain deferred.
 
@@ -156,7 +156,7 @@ The next phase should consolidate the technical prototype before adding broad co
 
 ### 1. Milestone 2 review and cleanup
 
-Status: **Active — closeout fix and architecture gate remain**
+Status: **Active — architecture gate remains**
 
 Dependencies:
 
@@ -170,6 +170,8 @@ Work:
 - Remove or explicitly retain temporary prototype-only feedback.
 - Confirm documentation matches the committed repository.
 - Plan a focused `TestUnit` decomposition before additional systems are added. Navigation has now established concrete route, cancellation, progress, recovery, and failure contracts, and `test_unit.gd` has grown to roughly 1,400 lines.
+
+The proposed boundary and staging are recorded in `TEST_UNIT_DECOMPOSITION_PLAN.md`. It recommends a state-first `RefCounted` extraction that preserves physics and public command ownership on `TestUnit`; no refactor has been implemented.
 
 Approval gates:
 

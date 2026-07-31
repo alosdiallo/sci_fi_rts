@@ -536,9 +536,9 @@ Dynamic topology, moving obstacles, terrain costs, attack-move, automatic acquis
 
 ### Recommended closeout scope
 
-1. Commit the clearance-safe routed-separation fix and its live four-unit regression.
+1. Keep the committed clearance-safe routed-separation fix and its live four-unit regression as the baseline.
 2. Keep every current prototype visual and both technical scenes.
-3. Create a focused `TestUnit` decomposition plan before implementation.
+3. Review and approve or revise `TEST_UNIT_DECOMPOSITION_PLAN.md` before implementation.
 4. Prefer navigation route execution/recovery as the first candidate boundary; preserve explicit physics ownership and do not broaden the refactor without evidence.
 5. Begin economy planning only after this architecture gate is approved.
 
@@ -580,4 +580,4 @@ The user must approve:
 
 ### Precise next task
 
-After committing the closeout fix, create **`TEST_UNIT_DECOMPOSITION_PLAN.md` only**. Map the current responsibilities and propose a narrow navigation/recovery extraction with explicit ownership, APIs, staging, regression requirements, and approval gates. Do not refactor code or begin economy in that task.
+Review **`TEST_UNIT_DECOMPOSITION_PLAN.md`** and approve or revise its state-first boundary. If approved, implement **Slice 1 only**: add the non-serialized navigation-state container and preserve all existing `TestUnit` APIs and behavior. Do not begin Slice 2 or economy in the same task.

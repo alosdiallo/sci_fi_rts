@@ -57,7 +57,7 @@ Milestone 1 remains technically complete. Milestone 2C — Approach and Spacing 
 
 ## Active work
 
-Navigation Slice 6 is committed. The current closeout change fixes a manual-regression finding: friendly separation could push a routed unit outside clearance-valid navigation space. Routed movement now accepts a separated step only when the map reports its segment as navigable, otherwise falls back to the command-only step or holds position. A live four-unit test verifies that grouped units remain in navigable cells and finish without false terminal recovery.
+The Milestone 2 navigation closeout is committed at `87733ae`. Its clearance fix prevents friendly separation from pushing routed units outside navigable space, and the live four-unit regression verifies clearance and route completion.
 
 Open `scenes/main/navigation_test.tscn`, box-select two to four friendly units north of the lower wall, and command them south of it. Units should wait at the cyan/yellow holding marker and traverse the passage one at a time without permanent stacking. The configured main scene remains unchanged and retains legacy direct combat approach.
 
@@ -65,7 +65,9 @@ Approved principle: modest on-screen unit counts permit navigation, group moveme
 
 The native validation runner now reports 120 passing checks. It covers definition/unit invariants, group/chokepoint/combat navigation, progress thresholds, intentional-wait exclusion, recovery escalation and limits, live replanning, terminal failure, new-command reset, and routed-group clearance under separation. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`.
 
-The representative manual pass verified camera movement, selection/deselection, ground commands, friendly-command no-op, explicit combat, damage/death cleanup, obstacle detours, rejected blocked destinations, multi-attacker slots, group obstacle routing, and bidirectional chokepoint traversal. Godot showed no warning or error count after the pass. The next approval gate is a focused plan for decomposing the now 1,409-line `TestUnit`; do not start a broad refactor or economy implementation without approval.
+The representative manual pass verified camera movement, selection/deselection, ground commands, friendly-command no-op, explicit combat, damage/death cleanup, obstacle detours, rejected blocked destinations, multi-attacker slots, group obstacle routing, and bidirectional chokepoint traversal. Godot showed no warning or error count after the pass.
+
+`TEST_UNIT_DECOMPOSITION_PLAN.md` is the active approval gate. It recommends moving route/result/chokepoint/recovery state into one non-serialized `UnitNavigationState` while `TestUnit` retains physics, separation, combat, presentation, path requests, and its existing public APIs. This is planning only; do not implement the extraction or begin economy without approval.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 
