@@ -27,8 +27,8 @@ A feature is **complete** only after it is implemented, verified, committed, and
 The project has moved beyond pre-production into an early technical-prototype phase.
 
 - **Current milestone:** Milestone 2 — Core Technical Foundation
-- **Active work:** Milestone 2 architecture gate — focused `TestUnit` decomposition planning
-- **Last committed checkpoint:** Milestone 2 navigation closeout (`87733ae`)
+- **Active work:** `TestUnit` Decomposition Slice 1 — verified and awaiting commit
+- **Last committed checkpoint:** focused `TestUnit` decomposition plan (`53588c1`)
 - **Current playable state:** one bounded interaction/combat test map plus a separate navigation arena with static-obstacle routing, destination validation, simplified routes, navigation-based combat approach, distinct group destinations, chokepoint queueing, bounded stuck recovery, and clearance-safe local separation
 - **Current content state:** generic geometric placeholders only; no final Army or Marine units, buildings, economy, campaign missions, or final art
 
@@ -107,7 +107,7 @@ Cleanup Slice 2 is committed. It adds a repository-native GDScript runner for de
 godot --headless --path . --script res://tests/run_validation.gd
 ```
 
-The representative manual interaction and navigation regression was completed on 2026-07-31. It exposed one real navigation defect: local friendly separation could move a routed unit across the map's clearance boundary. The committed closeout fix constrains separated route steps to clearance-valid segments, falls back to the command-only step when necessary, and adds a live four-unit regression fixture. The cleanup phase remains open only for the post-navigation `TestUnit` decomposition decision.
+The representative manual interaction and navigation regression was completed on 2026-07-31. It exposed one real navigation defect: local friendly separation could move a routed unit across the map's clearance boundary. The committed closeout fix constrains separated route steps to clearance-valid segments, falls back to the command-only step when necessary, and adds a live four-unit regression fixture. The approved state-first `TestUnit` decomposition is now implemented and verified in the working tree; the cleanup phase remains open only until that slice is committed and pushed.
 
 ## Completed planning: Navigation architecture
 
@@ -156,7 +156,7 @@ The next phase should consolidate the technical prototype before adding broad co
 
 ### 1. Milestone 2 review and cleanup
 
-Status: **Active — architecture gate remains**
+Status: **Active — approved Slice 1 is verified and awaiting commit**
 
 Dependencies:
 
@@ -169,13 +169,13 @@ Work:
 - Review warnings, node ownership, naming, and temporary debug visuals.
 - Remove or explicitly retain temporary prototype-only feedback.
 - Confirm documentation matches the committed repository.
-- Plan a focused `TestUnit` decomposition before additional systems are added. Navigation has now established concrete route, cancellation, progress, recovery, and failure contracts, and `test_unit.gd` has grown to roughly 1,400 lines.
+- Commit and push the verified state-first `TestUnit` decomposition before additional systems are added.
 
-The proposed boundary and staging are recorded in `TEST_UNIT_DECOMPOSITION_PLAN.md`. It recommends a state-first `RefCounted` extraction that preserves physics and public command ownership on `TestUnit`; no refactor has been implemented.
+The approved boundary and staging are recorded in `TEST_UNIT_DECOMPOSITION_PLAN.md`. Slice 1 adds one `UnitNavigationState` `RefCounted` owner for route, result, chokepoint, and recovery state. `TestUnit` retains physics, path requests, separation, combat, presentation, and compatibility APIs. The native runner has increased from 120 to 132 passing checks.
 
 Approval gates:
 
-- The exact first extraction boundary for `TestUnit`; the default recommendation is navigation/route execution and recovery state, not a broad component rewrite.
+- Recommended: close the architecture work after Slice 1. Optional route-execution Slice 2 remains deferred unless a concrete future consumer demonstrates a need for it.
 - Whether the technical test scene remains the main scene during Milestone 3.
 
 Exit criteria:

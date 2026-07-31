@@ -36,6 +36,7 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Navigation Slice 6: isolated route-progress tracking, intentional-wait exclusion, staged local refresh, two-attempt deterministic route recalculation, explicit stuck failure feedback, and native integration coverage.
 - Milestone 2 closeout validation for routed groups moving with local friendly separation.
 - Focused post-navigation `TestUnit` decomposition plan with a state-first extraction boundary, compatibility requirements, staged verification, rollback, and approval gates.
+- `UnitNavigationState`, a non-serialized owner for per-unit route, result, chokepoint, and recovery state, plus direct lifecycle validation.
 
 ### Changed
 
@@ -55,3 +56,4 @@ Notable changes to this project will be documented here. Dates use `YYYY-MM-DD`.
 - Established navigation planning as active and approved quality-over-throughput for deliberately modest unit counts, with correctness, route quality, deadlock handling, and responsive replanning prioritized before optimization.
 - Kept routed separation inside static navigation clearance by falling back to the command-only step, or holding position when neither candidate step is valid.
 - Recorded the representative Milestone 2 interaction/navigation regression and the focused post-navigation `TestUnit` decomposition gate.
+- Delegated existing `TestUnit` navigation state transitions and compatibility queries to `UnitNavigationState` without changing physics, combat, scenes, controllers, or authored data.

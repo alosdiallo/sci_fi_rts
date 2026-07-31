@@ -9,9 +9,6 @@ const APPROACH_TARGET_REFRESH_DISTANCE_SQUARED := (
 )
 const SEPARATION_DEAD_ZONE := 0.5
 const MAX_SEPARATION_CONTRIBUTION := 0.35
-const NAVIGATION_PROGRESS_WINDOW := 1.5
-const NAVIGATION_MINIMUM_PROGRESS := 4.0
-const NAVIGATION_MAX_REPLAN_ATTEMPTS := 2
 
 @export var definition: UnitDefinition
 @export var team_id: int = 0
@@ -26,30 +23,7 @@ const NAVIGATION_MAX_REPLAN_ATTEMPTS := 2
 var _is_selected := false
 var _movement_target := Vector2.ZERO
 var _has_movement_target := false
-var _ground_waypoints := PackedVector2Array()
-var _raw_ground_waypoints := PackedVector2Array()
-var _ground_route_start := Vector2.ZERO
-var _ground_waypoint_index := 0
-var _is_following_ground_route := false
-var _is_combat_navigation_route := false
-var _last_navigation_result := NavigationPathResult.Status.NONE
-var _last_navigation_requested_destination := Vector2.ZERO
-var _accepted_navigation_destination := Vector2.ZERO
-var _last_navigation_was_projected := false
-var _ground_navigation_map: NavigationTestMap
-var _navigation_command_sequence := -1
-var _navigation_priority := 0
-var _navigation_chokepoint_id := -1
-var _navigation_chokepoint_holding_point := Vector2.ZERO
-var _navigation_chokepoint_entry_side := 0
-var _is_waiting_at_navigation_chokepoint := false
-var _navigation_chokepoint_entry_granted := false
-var _navigation_recovery := NavigationRecoveryTracker.new(
-	NAVIGATION_PROGRESS_WINDOW,
-	NAVIGATION_MINIMUM_PROGRESS,
-	NAVIGATION_MAX_REPLAN_ATTEMPTS
-)
-var _navigation_recovery_failed := false
+var _navigation_state := UnitNavigationState.new()
 var _current_health := 0.0
 var _is_alive := false
 var _health_initialized := false
@@ -109,7 +83,7 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if _update_attack_target_state(delta):
 		return
-	if _is_following_ground_route:
+	if _navigation_state.has_active_route():
 		_move_toward_ground_route(delta)
 		return
 	if not _has_movement_target:
@@ -190,36 +164,24 @@ func _assign_navigation_route(
 ) -> void:
 	_clear_ground_route(not preserve_recovery_state)
 	_set_map_bounds(map_bounds)
-	_ground_waypoints = waypoints.duplicate()
-	_raw_ground_waypoints = raw_waypoints.duplicate()
-	_ground_route_start = global_position
-	for index in range(_ground_waypoints.size()):
-		_ground_waypoints[index] = _clamp_to_map_bounds(_ground_waypoints[index])
-	_ground_waypoint_index = 0
-	_is_following_ground_route = true
-	_is_combat_navigation_route = is_combat_route
-	_ground_navigation_map = navigation_map
-	_navigation_command_sequence = command_sequence
-	_navigation_priority = priority
-	_navigation_chokepoint_id = chokepoint_id
-	_navigation_chokepoint_holding_point = chokepoint_holding_point
-	_navigation_chokepoint_entry_side = chokepoint_entry_side
-	_is_waiting_at_navigation_chokepoint = false
-	_navigation_chokepoint_entry_granted = false
+	var clamped_waypoints := waypoints.duplicate()
+	for index in range(clamped_waypoints.size()):
+		clamped_waypoints[index] = _clamp_to_map_bounds(clamped_waypoints[index])
+	_navigation_state.assign_route(
+		clamped_waypoints,
+		raw_waypoints,
+		global_position,
+		is_combat_route,
+		navigation_map,
+		command_sequence,
+		priority,
+		chokepoint_id,
+		chokepoint_holding_point,
+		chokepoint_entry_side,
+		preserve_recovery_state
+	)
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
-	_navigation_recovery_failed = false
-	var first_waypoint_distance := global_position.distance_to(_ground_waypoints[0])
-	if preserve_recovery_state:
-		_navigation_recovery.restart_observation(
-			global_position,
-			first_waypoint_distance
-		)
-	else:
-		_navigation_recovery.begin_command(
-			global_position,
-			first_waypoint_distance
-		)
 	queue_redraw()
 
 
@@ -246,30 +208,28 @@ func record_navigation_failure(
 	result_status: NavigationPathResult.Status,
 	requested_destination: Vector2
 ) -> void:
-	_last_navigation_result = result_status
-	_last_navigation_requested_destination = requested_destination
-	_last_navigation_was_projected = false
+	_navigation_state.record_failure(result_status, requested_destination)
 	queue_redraw()
 
 
 func get_last_navigation_result() -> NavigationPathResult.Status:
-	return _last_navigation_result
+	return _navigation_state.get_last_result()
 
 
 func get_accepted_navigation_destination() -> Vector2:
-	return _accepted_navigation_destination
+	return _navigation_state.get_accepted_destination()
 
 
 func was_last_navigation_destination_projected() -> bool:
-	return _last_navigation_was_projected
+	return _navigation_state.was_last_destination_projected()
 
 
 func is_ground_route_active() -> bool:
-	return _is_following_ground_route and not _is_combat_navigation_route
+	return _navigation_state.is_ground_route()
 
 
 func is_combat_route_active() -> bool:
-	return _is_following_ground_route and _is_combat_navigation_route
+	return _navigation_state.is_combat_route()
 
 
 func has_combat_navigation_failure() -> bool:
@@ -289,49 +249,50 @@ func used_alternate_combat_firing_position() -> bool:
 
 
 func get_navigation_command_sequence() -> int:
-	return _navigation_command_sequence
+	return _navigation_state.get_command_sequence()
 
 
 func get_navigation_priority() -> int:
-	return _navigation_priority
+	return _navigation_state.get_priority()
 
 
 func is_waiting_for_navigation_chokepoint(chokepoint_id: int) -> bool:
 	return (
-		_is_following_ground_route
-		and _navigation_chokepoint_id == chokepoint_id
-		and _is_waiting_at_navigation_chokepoint
+		_navigation_state.has_active_route()
+		and _navigation_state.get_chokepoint_id() == chokepoint_id
+		and _navigation_state.is_waiting_at_chokepoint()
 	)
 
 
 func holds_navigation_chokepoint_reservation(chokepoint_id: int) -> bool:
+	var navigation_map := _navigation_state.get_navigation_map()
 	return (
-		_is_following_ground_route
-		and _ground_navigation_map != null
-		and _navigation_chokepoint_id == chokepoint_id
-		and _navigation_chokepoint_entry_granted
-		and not _ground_navigation_map.has_position_cleared_chokepoint(
+		_navigation_state.has_active_route()
+		and navigation_map != null
+		and _navigation_state.get_chokepoint_id() == chokepoint_id
+		and _navigation_state.is_chokepoint_entry_granted()
+		and not navigation_map.has_position_cleared_chokepoint(
 			global_position,
 			chokepoint_id,
-			_navigation_chokepoint_entry_side
+			_navigation_state.get_chokepoint_entry_side()
 		)
 	)
 
 
 func get_navigation_recovery_events() -> int:
-	return _navigation_recovery.get_recovery_events()
+	return _navigation_state.get_recovery_events()
 
 
 func get_navigation_replan_attempts() -> int:
-	return _navigation_recovery.get_replan_attempts()
+	return _navigation_state.get_replan_attempts()
 
 
 func get_navigation_recovery_action() -> NavigationRecoveryTracker.Action:
-	return _navigation_recovery.get_last_action()
+	return _navigation_state.get_recovery_action()
 
 
 func has_navigation_recovery_failure() -> bool:
-	return _navigation_recovery_failed
+	return _navigation_state.has_recovery_failure()
 
 
 func _record_navigation_success(
@@ -339,11 +300,10 @@ func _record_navigation_success(
 	requested_destination: Vector2,
 	accepted_destination: Vector2
 ) -> void:
-	_last_navigation_result = result_status
-	_last_navigation_requested_destination = requested_destination
-	_accepted_navigation_destination = accepted_destination
-	_last_navigation_was_projected = (
-		result_status == NavigationPathResult.Status.PROJECTED
+	_navigation_state.record_success(
+		result_status,
+		requested_destination,
+		accepted_destination
 	)
 	queue_redraw()
 
@@ -383,7 +343,7 @@ func _assign_attack_target(
 	)
 	_has_movement_target = false
 	_movement_target = Vector2.ZERO
-	_last_navigation_was_projected = false
+	_navigation_state.clear_projection_flag()
 	velocity = Vector2.ZERO
 	_update_target_indicator()
 	if navigation_map != null and _is_approaching_attack_target:
@@ -401,7 +361,7 @@ func clear_attack_target() -> void:
 
 
 func _clear_combat_navigation_state() -> void:
-	if _is_combat_navigation_route:
+	if _navigation_state.is_combat_route():
 		_clear_ground_route()
 	_combat_navigation_map = null
 	_has_combat_navigation_request = false
@@ -560,7 +520,7 @@ func _update_navigation_attack_target_state(delta: float) -> bool:
 		if _should_refresh_combat_navigation_route():
 			_refresh_combat_navigation_route()
 
-		if _is_combat_navigation_route:
+		if _navigation_state.is_combat_route():
 			var route_completed := _move_toward_ground_route(delta)
 			if (
 				route_completed
@@ -573,7 +533,7 @@ func _update_navigation_attack_target_state(delta: float) -> bool:
 			velocity = Vector2.ZERO
 		return true
 
-	if _is_combat_navigation_route:
+	if _navigation_state.is_combat_route():
 		_clear_ground_route()
 	velocity = Vector2.ZERO
 	_move_with_separation(Vector2.ZERO)
@@ -619,11 +579,11 @@ func _should_refresh_combat_navigation_route() -> bool:
 		return true
 
 	if (
-		_is_combat_navigation_route
-		and _ground_waypoint_index < _ground_waypoints.size()
+		_navigation_state.is_combat_route()
+		and _navigation_state.has_current_waypoint()
 		and not _combat_navigation_map.is_world_segment_navigable(
 			global_position,
-			_ground_waypoints[_ground_waypoint_index]
+			_navigation_state.get_current_waypoint()
 		)
 	):
 		return true
@@ -670,7 +630,7 @@ func _refresh_combat_navigation_route(
 
 	_combat_navigation_failed = false
 	_combat_navigation_failure_status = NavigationPathResult.Status.NONE
-	_accepted_navigation_destination = result.accepted_destination
+	_navigation_state.set_accepted_destination(result.accepted_destination)
 	_assign_navigation_route(
 		result.path,
 		result.raw_path,
@@ -795,44 +755,47 @@ func _move_toward_ground_target(delta: float) -> void:
 
 
 func _move_toward_ground_route(delta: float) -> bool:
-	if not _is_following_ground_route:
+	if not _navigation_state.has_active_route():
 		_clear_ground_route()
 		return true
 
 	var advanced_waypoint := false
-	while _ground_waypoint_index < _ground_waypoints.size():
+	while _navigation_state.has_current_waypoint():
 		if (
-			global_position.distance_to(_ground_waypoints[_ground_waypoint_index])
+			global_position.distance_to(_navigation_state.get_current_waypoint())
 			> definition.arrival_tolerance
 		):
 			break
 		if _should_wait_at_navigation_chokepoint():
-			_is_waiting_at_navigation_chokepoint = true
+			_navigation_state.set_waiting_at_chokepoint(true)
 			velocity = Vector2.ZERO
-			if not _ground_navigation_map.can_unit_enter_chokepoint(
+			var navigation_map := _navigation_state.get_navigation_map()
+			if not navigation_map.can_unit_enter_chokepoint(
 				self,
-				_navigation_chokepoint_id
+				_navigation_state.get_chokepoint_id()
 			):
-				_navigation_recovery.pause(global_position, 0.0)
+				_navigation_state.pause_recovery(global_position, 0.0)
 				queue_redraw()
 				return false
-			_is_waiting_at_navigation_chokepoint = false
-			_navigation_chokepoint_entry_granted = true
-		_ground_waypoint_index += 1
+			_navigation_state.set_waiting_at_chokepoint(false)
+			_navigation_state.grant_chokepoint_entry()
+		_navigation_state.advance_waypoint()
 		advanced_waypoint = true
 
-	if _ground_waypoint_index >= _ground_waypoints.size():
-		global_position = _clamp_to_map_bounds(_accepted_navigation_destination)
+	if _navigation_state.is_route_complete():
+		global_position = _clamp_to_map_bounds(
+			_navigation_state.get_accepted_destination()
+		)
 		velocity = Vector2.ZERO
 		_clear_ground_route()
 		return true
 
-	var waypoint := _ground_waypoints[_ground_waypoint_index]
+	var waypoint := _navigation_state.get_current_waypoint()
 	var offset_to_waypoint := waypoint - global_position
 	var distance_to_waypoint := offset_to_waypoint.length()
 	var maximum_step := definition.movement_speed * delta
 	if advanced_waypoint:
-		_navigation_recovery.restart_observation(
+		_navigation_state.restart_recovery_observation(
 			global_position,
 			distance_to_waypoint
 		)
@@ -840,19 +803,19 @@ func _move_toward_ground_route(delta: float) -> bool:
 	if distance_to_waypoint <= maximum_step:
 		global_position = _clamp_to_map_bounds(waypoint)
 		velocity = Vector2.ZERO
-		_ground_waypoint_index += 1
-		if _ground_waypoint_index >= _ground_waypoints.size():
-			global_position = _clamp_to_map_bounds(_accepted_navigation_destination)
+		_navigation_state.advance_waypoint()
+		if _navigation_state.is_route_complete():
+			global_position = _clamp_to_map_bounds(
+				_navigation_state.get_accepted_destination()
+			)
 			_clear_ground_route()
 		else:
-			_navigation_recovery.restart_observation(
+			_navigation_state.restart_recovery_observation(
 				global_position,
-				global_position.distance_to(
-					_ground_waypoints[_ground_waypoint_index]
-				)
+				global_position.distance_to(_navigation_state.get_current_waypoint())
 			)
 			queue_redraw()
-		return _ground_waypoint_index >= _ground_waypoints.size()
+		return _navigation_state.is_route_complete()
 
 	if _handle_navigation_recovery(delta, distance_to_waypoint):
 		return false
@@ -870,7 +833,7 @@ func _handle_navigation_recovery(
 	delta: float,
 	distance_to_waypoint: float
 ) -> bool:
-	var action := _navigation_recovery.observe(
+	var action := _navigation_state.observe_recovery(
 		delta,
 		global_position,
 		distance_to_waypoint
@@ -886,9 +849,9 @@ func _handle_navigation_recovery(
 			name,
 			get_path(),
 			NavigationRecoveryTracker.get_action_text(action),
-			_navigation_recovery.get_recovery_events(),
-			_navigation_recovery.get_replan_attempts(),
-			NAVIGATION_MAX_REPLAN_ATTEMPTS,
+			_navigation_state.get_recovery_events(),
+			_navigation_state.get_replan_attempts(),
+			UnitNavigationState.MAXIMUM_REPLAN_ATTEMPTS,
 		]
 	)
 	match action:
@@ -905,15 +868,15 @@ func _handle_navigation_recovery(
 
 
 func _attempt_navigation_replan() -> bool:
-	if _ground_navigation_map == null:
+	var navigation_map := _navigation_state.get_navigation_map()
+	if navigation_map == null:
 		return false
-	if _is_combat_navigation_route:
+	if _navigation_state.is_combat_route():
 		return _refresh_combat_navigation_route(true)
 
-	var navigation_map := _ground_navigation_map
-	var command_sequence := _navigation_command_sequence
-	var priority := _navigation_priority
-	var destination := _accepted_navigation_destination
+	var command_sequence := _navigation_state.get_command_sequence()
+	var priority := _navigation_state.get_priority()
+	var destination := _navigation_state.get_accepted_destination()
 	var result := navigation_map.request_navigation(global_position, destination)
 	if not result.is_success():
 		return false
@@ -936,28 +899,27 @@ func _attempt_navigation_replan() -> bool:
 		result.chokepoint_entry_side,
 		true
 	)
-	_accepted_navigation_destination = result.accepted_destination
+	_navigation_state.set_accepted_destination(result.accepted_destination)
 	return true
 
 
 func _fail_stuck_navigation() -> void:
-	var navigation_map := _ground_navigation_map
-	var was_combat_route := _is_combat_navigation_route
+	var navigation_map := _navigation_state.get_navigation_map()
+	var was_combat_route := _navigation_state.is_combat_route()
 	var result := NavigationPathResult.new()
 	result.status = NavigationPathResult.Status.STUCK_RECOVERY_EXHAUSTED
 	result.requested_start = global_position
 	result.requested_destination = (
 		_combat_desired_firing_position
 		if was_combat_route
-		else _last_navigation_requested_destination
+		else _navigation_state.get_last_requested_destination()
 	)
-	result.accepted_destination = _accepted_navigation_destination
+	result.accepted_destination = _navigation_state.get_accepted_destination()
 
 	velocity = Vector2.ZERO
 	_clear_ground_route(false)
-	_navigation_recovery_failed = true
-	_last_navigation_result = result.status
-	_last_navigation_was_projected = false
+	_navigation_state.mark_recovery_failed()
+	_navigation_state.record_failure(result.status, result.requested_destination)
 	if was_combat_route:
 		_combat_navigation_failed = true
 		_combat_navigation_failure_status = result.status
@@ -969,34 +931,18 @@ func _fail_stuck_navigation() -> void:
 
 func _should_wait_at_navigation_chokepoint() -> bool:
 	return (
-		_ground_navigation_map != null
-		and _navigation_chokepoint_id >= 0
-		and not _navigation_chokepoint_entry_granted
-		and _ground_waypoint_index < _ground_waypoints.size()
-		and _ground_waypoints[_ground_waypoint_index].is_equal_approx(
-			_navigation_chokepoint_holding_point
+		_navigation_state.get_navigation_map() != null
+		and _navigation_state.get_chokepoint_id() >= 0
+		and not _navigation_state.is_chokepoint_entry_granted()
+		and _navigation_state.has_current_waypoint()
+		and _navigation_state.get_current_waypoint().is_equal_approx(
+			_navigation_state.get_chokepoint_holding_point()
 		)
 	)
 
 
 func _clear_ground_route(reset_recovery_state: bool = true) -> void:
-	_ground_waypoints = PackedVector2Array()
-	_raw_ground_waypoints = PackedVector2Array()
-	_ground_route_start = Vector2.ZERO
-	_ground_waypoint_index = 0
-	_is_following_ground_route = false
-	_is_combat_navigation_route = false
-	_ground_navigation_map = null
-	_navigation_command_sequence = -1
-	_navigation_priority = 0
-	_navigation_chokepoint_id = -1
-	_navigation_chokepoint_holding_point = Vector2.ZERO
-	_navigation_chokepoint_entry_side = 0
-	_is_waiting_at_navigation_chokepoint = false
-	_navigation_chokepoint_entry_granted = false
-	if reset_recovery_state:
-		_navigation_recovery.reset()
-		_navigation_recovery_failed = false
+	_navigation_state.clear_route(reset_recovery_state)
 	queue_redraw()
 
 
@@ -1024,7 +970,8 @@ func _move_with_separation(
 	)
 	velocity = movement_direction * movement_speed * movement_speed_scale
 	var movement_start := global_position
-	if _is_following_ground_route and _ground_navigation_map != null:
+	var navigation_map := _navigation_state.get_navigation_map()
+	if _navigation_state.has_active_route() and navigation_map != null:
 		var physics_delta := get_physics_process_delta_time()
 		if physics_delta > 0.0:
 			var separated_endpoint := _clamp_to_map_bounds(
@@ -1037,7 +984,7 @@ func _move_with_separation(
 					+ command_direction.normalized() * movement_speed * physics_delta
 				)
 			var safe_endpoint := choose_navigation_safe_endpoint(
-				_ground_navigation_map,
+				navigation_map,
 				movement_start,
 				separated_endpoint,
 				command_endpoint
@@ -1049,9 +996,9 @@ func _move_with_separation(
 	move_and_slide()
 	global_position = _clamp_to_map_bounds(global_position)
 	if (
-		_is_following_ground_route
-		and _ground_navigation_map != null
-		and not _ground_navigation_map.is_world_segment_navigable(
+		_navigation_state.has_active_route()
+		and navigation_map != null
+		and not navigation_map.is_world_segment_navigable(
 			movement_start,
 			global_position
 		)
@@ -1266,40 +1213,47 @@ func _draw() -> void:
 	if not _is_selected:
 		return
 
-	if _is_following_ground_route:
-		if not _raw_ground_waypoints.is_empty():
-			var raw_local_path := PackedVector2Array([to_local(_ground_route_start)])
-			for raw_waypoint in _raw_ground_waypoints:
+	if _navigation_state.has_active_route():
+		var route_waypoints := _navigation_state.get_waypoints()
+		var raw_route_waypoints := _navigation_state.get_raw_waypoints()
+		var route_waypoint_index := _navigation_state.get_waypoint_index()
+		if not raw_route_waypoints.is_empty():
+			var raw_local_path := PackedVector2Array(
+				[to_local(_navigation_state.get_route_start())]
+			)
+			for raw_waypoint in raw_route_waypoints:
 				raw_local_path.append(to_local(raw_waypoint))
 			if raw_local_path.size() >= 2:
 				var raw_color := (
 					Color(0.85, 0.3, 0.55, 0.65)
-					if _is_combat_navigation_route
+					if _navigation_state.is_combat_route()
 					else Color(0.45, 0.52, 0.58, 0.7)
 				)
 				draw_polyline(raw_local_path, raw_color, 1.0)
 
 		var local_path := PackedVector2Array([Vector2.ZERO])
-		for index in range(_ground_waypoint_index, _ground_waypoints.size()):
-			local_path.append(to_local(_ground_waypoints[index]))
+		for index in range(route_waypoint_index, route_waypoints.size()):
+			local_path.append(to_local(route_waypoints[index]))
 
 		if local_path.size() >= 2:
 			var route_color := (
 				Color("ff5fa2")
-				if _is_combat_navigation_route
+				if _navigation_state.is_combat_route()
 				else Color("35d9ff")
 			)
 			draw_polyline(local_path, route_color, 3.0)
 
-		var active_waypoint := to_local(_ground_waypoints[_ground_waypoint_index])
-		var final_destination := to_local(_ground_waypoints[_ground_waypoints.size() - 1])
+		var active_waypoint := to_local(route_waypoints[route_waypoint_index])
+		var final_destination := to_local(route_waypoints[route_waypoints.size() - 1])
 		draw_circle(active_waypoint, 7.0, Color("ff9f43"))
 		draw_circle(final_destination, 10.0, Color("9b6cff"), false, 3.0)
-		if _navigation_chokepoint_id >= 0:
-			var holding_point := to_local(_navigation_chokepoint_holding_point)
+		if _navigation_state.get_chokepoint_id() >= 0:
+			var holding_point := to_local(
+				_navigation_state.get_chokepoint_holding_point()
+			)
 			var holding_color := (
 				Color("ffcf4d")
-				if _is_waiting_at_navigation_chokepoint
+				if _navigation_state.is_waiting_at_chokepoint()
 				else Color("8ad8ff")
 			)
 			draw_rect(
@@ -1309,10 +1263,12 @@ func _draw() -> void:
 				2.0
 			)
 
-	var recovery_events := _navigation_recovery.get_recovery_events()
+	var recovery_events := _navigation_state.get_recovery_events()
 	if recovery_events > 0:
 		var recovery_color := (
-			Color("ff4d5e") if _navigation_recovery_failed else Color("ff9f43")
+			Color("ff4d5e")
+			if _navigation_state.has_recovery_failure()
+			else Color("ff9f43")
 		)
 		var visible_events := mini(recovery_events, 4)
 		for event_index in range(visible_events):
@@ -1356,9 +1312,11 @@ func _draw() -> void:
 				3.0
 			)
 
-	if _last_navigation_was_projected:
-		var raw_click := to_local(_last_navigation_requested_destination)
-		var accepted_destination := to_local(_accepted_navigation_destination)
+	if _navigation_state.was_last_destination_projected():
+		var raw_click := to_local(_navigation_state.get_last_requested_destination())
+		var accepted_destination := to_local(
+			_navigation_state.get_accepted_destination()
+		)
 		draw_dashed_line(raw_click, accepted_destination, Color("f7d154"), 2.0, 6.0)
 		draw_circle(raw_click, 7.0, Color("f7d154"), false, 2.0)
 		draw_circle(accepted_destination, 7.0, Color("56e39f"), false, 2.0)

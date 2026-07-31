@@ -17,6 +17,7 @@ func _run_validation() -> void:
 	_check_pure_calculations()
 	_check_footprint_calculations()
 	_check_navigation_recovery()
+	_check_unit_navigation_state()
 	await _check_navigation_grid()
 	_check_health_damage_hostility_and_targeting()
 
@@ -300,6 +301,185 @@ func _check_navigation_recovery() -> void:
 		== NavigationRecoveryTracker.Action.NONE
 		and waiting_tracker.get_recovery_events() == 0,
 		"intentional chokepoint waiting consumed recovery budget"
+	)
+
+
+func _check_unit_navigation_state() -> void:
+	var navigation_state := UnitNavigationState.new()
+	_expect_true(
+		"unit navigation state starts inactive",
+		not navigation_state.has_active_route()
+		and navigation_state.get_last_result() == NavigationPathResult.Status.NONE
+		and navigation_state.get_recovery_events() == 0
+		and not navigation_state.has_recovery_failure(),
+		"fresh navigation state contained active route, result, or recovery data"
+	)
+
+	var assigned_waypoints := PackedVector2Array(
+		[Vector2(64.0, 32.0), Vector2(96.0, 32.0)]
+	)
+	var assigned_raw_waypoints := PackedVector2Array(
+		[Vector2(32.0, 32.0), Vector2(64.0, 32.0), Vector2(96.0, 32.0)]
+	)
+	navigation_state.assign_route(
+		assigned_waypoints,
+		assigned_raw_waypoints,
+		Vector2(32.0, 32.0),
+		false,
+		null,
+		7,
+		2,
+		3,
+		Vector2(64.0, 32.0),
+		-1
+	)
+	assigned_waypoints[0] = Vector2(999.0, 999.0)
+	assigned_raw_waypoints[0] = Vector2(999.0, 999.0)
+	var returned_waypoints := navigation_state.get_waypoints()
+	returned_waypoints[0] = Vector2(777.0, 777.0)
+	_expect_true(
+		"unit navigation state duplicates assigned and returned paths",
+		navigation_state.get_current_waypoint().is_equal_approx(Vector2(64.0, 32.0))
+		and navigation_state.get_raw_waypoints()[0].is_equal_approx(
+			Vector2(32.0, 32.0)
+		),
+		"external path mutation changed active navigation state"
+	)
+	_expect_true(
+		"unit navigation state records ground route metadata",
+		navigation_state.is_ground_route()
+		and not navigation_state.is_combat_route()
+		and navigation_state.get_command_sequence() == 7
+		and navigation_state.get_priority() == 2
+		and navigation_state.get_chokepoint_id() == 3
+		and navigation_state.get_chokepoint_entry_side() == -1,
+		"assigned ground route metadata was incomplete"
+	)
+
+	navigation_state.advance_waypoint()
+	_expect_true(
+		"unit navigation state advances waypoint deterministically",
+		navigation_state.get_waypoint_index() == 1
+		and navigation_state.get_current_waypoint().is_equal_approx(
+			Vector2(96.0, 32.0)
+		)
+		and not navigation_state.is_route_complete(),
+		"first waypoint advance produced the wrong state"
+	)
+	navigation_state.advance_waypoint()
+	_expect_true(
+		"unit navigation state reports route completion",
+		navigation_state.is_route_complete()
+		and not navigation_state.has_current_waypoint(),
+		"final waypoint advance did not complete the route"
+	)
+
+	navigation_state.record_success(
+		NavigationPathResult.Status.PROJECTED,
+		Vector2(100.0, 100.0),
+		Vector2(96.0, 96.0)
+	)
+	navigation_state.record_failure(
+		NavigationPathResult.Status.NO_VALID_DESTINATION,
+		Vector2(500.0, 500.0)
+	)
+	_expect_true(
+		"unit navigation rejected result preserves accepted destination",
+		navigation_state.get_last_result()
+		== NavigationPathResult.Status.NO_VALID_DESTINATION
+		and navigation_state.get_accepted_destination().is_equal_approx(
+			Vector2(96.0, 96.0)
+		)
+		and not navigation_state.was_last_destination_projected(),
+		"failure result erased the accepted destination or retained projection"
+	)
+
+	navigation_state.set_waiting_at_chokepoint(true)
+	navigation_state.grant_chokepoint_entry()
+	_expect_true(
+		"unit navigation state records chokepoint wait and grant",
+		navigation_state.is_waiting_at_chokepoint()
+		and navigation_state.is_chokepoint_entry_granted(),
+		"chokepoint state transition was not retained"
+	)
+
+	var stalled_distance := 64.0
+	var first_action := navigation_state.observe_recovery(
+		UnitNavigationState.PROGRESS_WINDOW,
+		Vector2(32.0, 32.0),
+		stalled_distance
+	)
+	var second_action := navigation_state.observe_recovery(
+		UnitNavigationState.PROGRESS_WINDOW,
+		Vector2(32.0, 32.0),
+		stalled_distance
+	)
+	_expect_true(
+		"unit navigation state preserves recovery budget during replan assignment",
+		first_action == NavigationRecoveryTracker.Action.REFRESH_LOCAL_STATE
+		and second_action == NavigationRecoveryTracker.Action.RECALCULATE_ROUTE
+		and navigation_state.get_recovery_events() == 2
+		and navigation_state.get_replan_attempts() == 1,
+		"state did not reach the expected pre-replan recovery point"
+	)
+	navigation_state.assign_route(
+		PackedVector2Array([Vector2(128.0, 32.0)]),
+		PackedVector2Array(),
+		Vector2(32.0, 32.0),
+		true,
+		null,
+		7,
+		2,
+		-1,
+		Vector2.ZERO,
+		0,
+		true
+	)
+	_expect_true(
+		"unit navigation replan assignment preserves recovery state",
+		navigation_state.is_combat_route()
+		and navigation_state.get_recovery_events() == 2
+		and navigation_state.get_replan_attempts() == 1,
+		"preserved route assignment reset or changed recovery state"
+	)
+
+	navigation_state.assign_route(
+		PackedVector2Array([Vector2(160.0, 32.0)]),
+		PackedVector2Array(),
+		Vector2(32.0, 32.0),
+		false,
+		null,
+		8,
+		0,
+		-1,
+		Vector2.ZERO,
+		0
+	)
+	_expect_true(
+		"unit navigation new command resets recovery and chokepoint state",
+		navigation_state.is_ground_route()
+		and navigation_state.get_recovery_events() == 0
+		and navigation_state.get_replan_attempts() == 0
+		and not navigation_state.is_waiting_at_chokepoint()
+		and not navigation_state.is_chokepoint_entry_granted(),
+		"new route inherited recovery or chokepoint state"
+	)
+
+	navigation_state.mark_recovery_failed()
+	navigation_state.clear_route(false)
+	_expect_true(
+		"unit navigation terminal clear preserves exhausted recovery",
+		not navigation_state.has_active_route()
+		and navigation_state.has_recovery_failure(),
+		"terminal clear erased the explicit recovery failure"
+	)
+	navigation_state.clear_route(true)
+	_expect_true(
+		"unit navigation explicit reset clears recovery failure",
+		not navigation_state.has_recovery_failure()
+		and navigation_state.get_recovery_events() == 0
+		and navigation_state.get_replan_attempts() == 0,
+		"explicit route reset retained exhausted recovery state"
 	)
 
 

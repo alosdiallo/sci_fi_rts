@@ -63,11 +63,13 @@ Open `scenes/main/navigation_test.tscn`, box-select two to four friendly units n
 
 Approved principle: modest on-screen unit counts permit navigation, group movement, recovery, and tactical AI to prioritize correctness and behavior quality over maximum throughput. Optimize only after route reliability, quality, congestion/deadlock handling, and replanning are sound.
 
-The native validation runner now reports 120 passing checks. It covers definition/unit invariants, group/chokepoint/combat navigation, progress thresholds, intentional-wait exclusion, recovery escalation and limits, live replanning, terminal failure, new-command reset, and routed-group clearance under separation. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`.
+The native validation runner now reports 132 passing checks. It covers definition/unit invariants, group/chokepoint/combat navigation, progress thresholds, intentional-wait exclusion, recovery escalation and limits, live replanning, terminal failure, new-command reset, routed-group clearance under separation, and direct `UnitNavigationState` lifecycle transitions. Run it through `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tests/run_validation.gd`.
 
 The representative manual pass verified camera movement, selection/deselection, ground commands, friendly-command no-op, explicit combat, damage/death cleanup, obstacle detours, rejected blocked destinations, multi-attacker slots, group obstacle routing, and bidirectional chokepoint traversal. Godot showed no warning or error count after the pass.
 
-`TEST_UNIT_DECOMPOSITION_PLAN.md` is the active approval gate. It recommends moving route/result/chokepoint/recovery state into one non-serialized `UnitNavigationState` while `TestUnit` retains physics, separation, combat, presentation, path requests, and its existing public APIs. This is planning only; do not implement the extraction or begin economy without approval.
+`TEST_UNIT_DECOMPOSITION_PLAN.md` Slice 1 is approved and implemented in the working tree. One non-serialized `UnitNavigationState` now owns route/result/chokepoint/recovery state while `TestUnit` retains physics, separation, combat, presentation, path requests, and its existing public APIs. Twenty fields and three recovery constants moved out of `TestUnit`; no scene, controller, Resource, or project-setting change was required.
+
+Post-extraction verification passed: editor load, both headless scene launches, 132 native checks, navigation command replacement, main-scene ground movement, hostile targeting, damage/death cleanup, and clean target removal. Commit and push remain. Optional Slice 2 is not recommended without a concrete need, and economy implementation is not authorized until its focused plan is reviewed.
 
 See `DEVELOPMENT_PLAN.md` for the full development status, dependencies, approval gates, deferred scope, and implementation sequence.
 

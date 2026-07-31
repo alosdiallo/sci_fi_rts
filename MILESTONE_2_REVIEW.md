@@ -4,15 +4,17 @@
 
 This review began after Approach and Spacing Slice 4 and now records the post-navigation Milestone 2 closeout. Navigation Slices 1–6 are committed; a representative manual interaction/navigation regression was completed on 2026-07-31.
 
+The state-first boundary in `TEST_UNIT_DECOMPOSITION_PLAN.md` was approved. Slice 1 is implemented and verified in the working tree and awaits commit; Slice 2 remains separately gated and is not currently recommended.
+
 This document does not authorize implementation. It does not redefine game design, final unit architecture, navigation, economy, or content.
 
 ## Executive findings
 
 - The prototype has clear outer boundaries: authored values are in `UnitDefinition`, pointer commands are in focused controllers, map bounds have one authority, and per-unit runtime state and presentation are owned by `TestUnit`.
-- `test_unit.gd` is now a 1,409-line prototype script with more than 40 private runtime-state fields. Navigation has added route ownership, waypoint progression, destination/result metadata, chokepoint state, recovery budgets, combat routing, and debug presentation to its earlier movement/combat responsibilities.
+- Before extraction, `test_unit.gd` was a 1,409-line prototype script with more than 40 private runtime-state fields. Slice 1 moved 20 route/result/chokepoint/recovery fields and three recovery constants into `UnitNavigationState`; `TestUnit` now retains 26 direct private fields while continuing to coordinate live movement, combat, and presentation.
 - The decision to defer extraction until navigation established real contracts was correct. Those contracts now exist, so a focused decomposition plan is justified before economy, production, or real unit categories expand the script further.
 - Do not begin a broad component rewrite. The first proposed boundary should isolate navigation route execution and recovery behind a narrow typed contract while leaving `CharacterBody2D` motion ownership and existing behavior explicit until the plan proves otherwise.
-- Cleanup Slices 1–2 and Navigation Slices 1–6 are committed. The active closeout change fixes a clearance defect found during manual regression and adds a live grouped-routing check.
+- Cleanup Slices 1–2 and Navigation Slices 1–6 are committed. The active closeout change is the verified state-first navigation-state extraction; the earlier clearance defect and live grouped-routing regression are already committed.
 - All current geometric visuals remain useful diagnostics. They should be explicitly treated as temporary, not removed or replaced with final presentation.
 - `scenes/main/milestone_1.tscn` should remain the main scene until a second test composition has materially different fixtures or lifecycle needs.
 
@@ -530,17 +532,17 @@ Dynamic topology, moving obstacles, terrain costs, attack-move, automatic acquis
 
 - Milestone 2 has a coherent, data-driven technical foundation, a useful interaction/combat laboratory, and a separate navigation regression arena.
 - Deferring structural extraction until navigation was correct; route, cancellation, congestion, recovery, and failure contracts are now concrete.
-- At 1,409 lines and more than 40 private state fields, `TestUnit` should not absorb economy or another major movement system unchanged.
-- The 120-check native runner plus the recorded interactive pass provide a suitable safety net for a staged extraction.
+- Slice 1 has reduced direct navigation state on `TestUnit` without changing its physics, command, combat, or presentation boundary.
+- The 132-check native runner plus the recorded interactive passes provide a suitable safety net for the completed staged extraction.
 - Temporary diagnostics remain valuable and should stay until replacement presentation exists.
 
 ### Recommended closeout scope
 
 1. Keep the committed clearance-safe routed-separation fix and its live four-unit regression as the baseline.
 2. Keep every current prototype visual and both technical scenes.
-3. Review and approve or revise `TEST_UNIT_DECOMPOSITION_PLAN.md` before implementation.
-4. Prefer navigation route execution/recovery as the first candidate boundary; preserve explicit physics ownership and do not broaden the refactor without evidence.
-5. Begin economy planning only after this architecture gate is approved.
+3. Commit and push the verified `UnitNavigationState` Slice 1 extraction.
+4. Close the architecture gate after Slice 1; do not begin optional route-execution Slice 2 without evidence from a concrete future consumer.
+5. Begin a focused plan for the smallest gather-return-deposit economy loop after the commit.
 
 ### Explicitly not worth changing
 
@@ -571,13 +573,13 @@ The user must approve:
 ### Exit criteria for the review and cleanup phase
 
 - The clearance-safe closeout fix is committed and pushed.
-- The validation runner reports 120 passed and zero failed checks.
+- The validation runner reports 132 passed and zero failed checks.
 - The recorded representative manual pass remains warning/error free.
 - Documentation matches the committed and pushed repository.
-- The post-navigation decomposition plan is approved or explicitly deferred.
+- The approved post-navigation decomposition Slice 1 is implemented and verified.
 - No unapproved architecture, navigation, economy, content, or presentation work is included.
 - The approved decomposition boundary is written clearly enough to implement one bounded, reversible slice.
 
 ### Precise next task
 
-Review **`TEST_UNIT_DECOMPOSITION_PLAN.md`** and approve or revise its state-first boundary. If approved, implement **Slice 1 only**: add the non-serialized navigation-state container and preserve all existing `TestUnit` APIs and behavior. Do not begin Slice 2 or economy in the same task.
+Commit and push the verified Slice 1 extraction. Then close Milestone 2 architecture work and create a focused plan for the smallest generic gather-return-deposit economy loop. Do not begin optional route-execution Slice 2 or economy implementation without a separate approved plan.

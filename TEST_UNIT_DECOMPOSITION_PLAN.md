@@ -2,13 +2,23 @@
 
 ## Status and purpose
 
-Status: **Planning only — implementation requires approval**
+Status: **Slice 1 implemented and verified in the working tree — commit remains**
 
 `scripts/units/test_unit.gd` is currently 1,409 lines and owns interaction, direct movement, navigation, separation, targeting, combat, health, death, and temporary presentation. Navigation Slices 1–6 deliberately remained in this script until route, cancellation, congestion, recovery, and failure requirements were proven.
 
 Those contracts now exist. This plan defines the smallest reversible extraction before economy, production, or real unit categories add more responsibilities.
 
-This document does not authorize code, scene, Resource, or project-setting changes.
+The user approved Slice 1 after committing this plan. Slice 2 and broader refactors remain unapproved.
+
+## Slice 1 implementation result
+
+- Added one non-serialized `UnitNavigationState` `RefCounted` object.
+- Moved 20 route/result/chokepoint/recovery fields and three recovery constants out of `TestUnit`.
+- Reduced direct private state on `TestUnit` to 26 fields while preserving its existing public navigation APIs.
+- Kept physics, separation, path requests, combat-navigation state, presentation, scenes, controllers, Resources, and project settings unchanged.
+- Added 12 direct state-transition checks; the native runner now reports 132 passed and zero failed checks.
+- Repeated representative navigation-command replacement and main-scene movement/combat/death checks in Godot after the extraction; no warning or error was observed.
+- Slice 2 remains optional and separately gated. The current recommendation is to stop after Slice 1 because the state boundary is now clear and additional route-execution extraction would add coordination without a demonstrated consumer.
 
 ## Goals
 
@@ -350,7 +360,7 @@ Reconsider combat, health, or presentation components only after a second real u
 - Godot 4.7 headless editor load passes without warnings or errors.
 - The main interaction scene launches headlessly.
 - The navigation arena launches headlessly.
-- The existing native runner remains at least 120 passing checks with zero failures.
+- The native runner reports at least 132 passing checks with zero failures.
 - New direct `UnitNavigationState` checks cover:
   - fresh inactive state;
   - route assignment and duplicated arrays;

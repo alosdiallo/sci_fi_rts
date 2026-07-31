@@ -43,11 +43,11 @@ Implemented and committed navigation checkpoints:
 
 Active:
 
-- Milestone 2 closeout: approval of the focused post-navigation `TestUnit` decomposition plan.
+- Milestone 2 closeout: commit and push the verified state-first `TestUnit` decomposition slice.
 
 Still required to complete the milestone:
 
-- Approval of the focused `TestUnit` decomposition boundary before economy work.
+- Close architecture work after Slice 1 unless a concrete future need justifies separately planning optional route-execution Slice 2.
 - Decision about which technical scene becomes the regular Milestone 3 sandbox.
 
 ## Milestone 3: Small playable loop — Planned
